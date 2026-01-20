@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>해골 캐릭터 파츠 분리 툴 v3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .left-panel {
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        .right-panel {
+            width: 380px;
+        }
+        
+        .canvas-container {
+            position: relative;
+            background: #252540;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+            background: repeating-conic-gradient(#333 0% 25%, #444 0% 50%) 50% / 20px 20px;
+            border: 2px solid #4a4a6a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #mainCanvas {
+            display: block;
+        }
+        
+        .slice-line-h {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            cursor: ns-resize;
+            z-index: 10;
+        }
+        
+        .slice-line-h::before {
+            content: attr(data-label);
+            position: absolute;
+            left: -80px;
+            top: -8px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        .slice-line-h::after {
+            content: 'Y: ' attr(data-y) 'px';
+            position: absolute;
+            right: -80px;
+            top: -8px;
+            font-size: 11px;
+        }
+        
+        .slice-line-h.line1 { background: #ff4444; }
+        .slice-line-h.line1::before, .slice-line-h.line1::after { color: #ff4444; }
+        
+        .slice-line-h.line2 { background: #44ff44; }
+        .slice-line-h.line2::before, .slice-line-h.line2::after { color: #44ff44; }
+        
+        .slice-line-v {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            cursor: ew-resize;
+            z-index: 10;
+        }
+        
+        .slice-line-v::before {
+            content: attr(data-label);
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        .slice-line-v::after {
+            content: 'X: ' attr(data-x) 'px';
+            position: absolute;
+            bottom: -20px;
+            left: -25px;
+            font-size: 11px;
+        }
+        
+        .slice-line-v.line3 { background: #ffaa00; }
+        .slice-line-v.line3::before, .slice-line-v.line3::after { color: #ffaa00; }
+        
+        .controls {
+            background: #252540;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .control-group input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a2e;
+            border: 1px solid #4a4a6a;
+            border-radius: 6px;
+            color: #fff;
+        }
+        
+        .control-group input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            background: #1a1a2e;
+            border: 1px solid #4a4a6a;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-row .control-group {
+            flex: 1;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #6366f1;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #4f46e5;
+        }
+        
+        button.secondary {
+            background: #4a4a6a;
+        }
+        
+        button.secondary:hover {
+            background: #5a5a7a;
+        }
+        
+        button.success {
+            background: #22c55e;
+        }
+        
+        button.success:hover {
+            background: #16a34a;
+        }
+        
+        .preview-section {
+            background: #252540;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .preview-section h3 {
+            margin-bottom: 15px;
+            color: #9d9dff;
+        }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .preview-item {
+            background: repeating-conic-gradient(#333 0% 25%, #444 0% 50%) 50% / 10px 10px;
+            border: 1px solid #4a4a6a;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .preview-item.wide {
+            grid-column: span 2;
+        }
+        
+        .preview-item img {
+            max-width: 120px;
+            max-height: 120px;
+        }
+        
+        .preview-item p {
+            margin-top: 5px;
+            font-size: 0.75rem;
+            color: #888;
+        }
+        
+        .preview-item .part-name {
+            font-weight: bold;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+        
+        .info {
+            background: #1a1a2e;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.8rem;
+            color: #888;
+            line-height: 1.5;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .zoom-controls button {
+            flex: 1;
+            margin-bottom: 0;
+            padding: 8px;
+            font-size: 0.9rem;
+        }
+        
+        #imageInfo {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        #fileName {
+            color: #9d9dff;
+            font-weight: bold;
+        }
+
+        .download-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            margin-top: 15px;
+        }
+
+        .download-buttons button {
+            margin-bottom: 0;
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+        
+        .download-buttons button.wide {
+            grid-column: span 2;
+        }
+        
+        .section-title {
+            font-size: 0.85rem;
+            color: #9d9dff;
+            margin: 15px 0 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #4a4a6a;
+        }
+        
+        .line-color-guide {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+        }
+        
+        .line-color-guide span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .color-dot.red { background: #ff4444; }
+        .color-dot.green { background: #44ff44; }
+        .color-dot.orange { background: #ffaa00; }
+    </style>
+</head>
+<body>
+    <h1>🦴 해골 캐릭터 파츠 분리 툴 v3</h1>
+    
+    <div class="container">
+        <div class="left-panel">
+            <div class="canvas-container">
+                <div class="canvas-wrapper" id="canvasWrapper">
+                    <canvas id="mainCanvas"></canvas>
+                    <div class="slice-line-h line1" id="line1" data-label="머리/몸통" data-y="925"></div>
+                    <div class="slice-line-h line2" id="line2" data-label="몸통/발" data-y="1192"></div>
+                    <div class="slice-line-v line3" id="line3" data-label="좌/우" data-x="470"></div>
+                </div>
+                <div id="imageInfo"></div>
+            </div>
+        </div>
+        
+        <div class="right-panel">
+            <div class="controls">
+                <div class="control-group">
+                    <label>이미지 불러오기</label>
+                    <input type="file" id="imageInput" accept="image/*">
+                </div>
+                
+                <div class="info">
+                    📁 현재 파일: <span id="fileName">없음</span><br><br>
+                    💡 라인을 드래그하거나 숫자를 입력해서 분리 위치를 조절하세요.<br><br>
+                    <div class="line-color-guide">
+                        <span><div class="color-dot red"></div> 머리/몸통</span>
+                        <span><div class="color-dot green"></div> 몸통/발</span>
+                        <span><div class="color-dot orange"></div> 왼발/오른발</span>
+                    </div>
+                </div>
+                
+                <div class="zoom-controls">
+                    <button class="secondary" onclick="changeZoom(-0.1)">➖</button>
+                    <button class="secondary" onclick="changeZoom(0.1)">➕</button>
+                    <button class="secondary" onclick="resetZoom()">↺</button>
+                </div>
+                
+                <div class="section-title">가로 분리선 (Y좌표)</div>
+                <div class="control-row">
+                    <div class="control-group">
+                        <label style="color: #ff4444;">Line 1 (머리/몸통)</label>
+                        <input type="number" id="line1Input" value="925" onchange="updateLineFromInput(1)">
+                    </div>
+                    <div class="control-group">
+                        <label style="color: #44ff44;">Line 2 (몸통/발)</label>
+                        <input type="number" id="line2Input" value="1192" onchange="updateLineFromInput(2)">
+                    </div>
+                </div>
+                
+                <div class="section-title">세로 분리선 (X좌표)</div>
+                <div class="control-group">
+                    <label style="color: #ffaa00;">Line 3 (왼발/오른발 중앙)</label>
+                    <input type="number" id="line3Input" value="470" onchange="updateLineFromInput(3)">
+                </div>
+                
+                <button class="success" onclick="sliceAndPreview()">✂️ 분리 미리보기</button>
+                
+                <div class="download-buttons" id="downloadButtons" style="display: none;">
+                    <button onclick="downloadPart('Head')">📥 Head</button>
+                    <button onclick="downloadPart('Body')">📥 Body</button>
+                    <button onclick="downloadPart('Foot_L')">📥 Foot L</button>
+                    <button onclick="downloadPart('Foot_R')">📥 Foot R</button>
+                    <button class="secondary wide" onclick="downloadAll()">📦 전체 다운로드</button>
+                </div>
+            </div>
+            
+            <div class="preview-section">
+                <h3>📦 분리 결과 미리보기</h3>
+                <div class="preview-grid" id="previewGrid">
+                    <p style="color: #666; grid-column: span 2;">이미지를 불러오고 분리하면 여기에 표시됩니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentImage = null;
+        let currentFileName = '';
+        let zoom = 0.5;
+        let line1Y = 925;   // 머리/몸통 기본값
+        let line2Y = 1192;  // 몸통/발 기본값
+        let line3X = 470;   // 왼발/오른발 기본값
+        let isDragging = null;
+        let slicedParts = {};
+        
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvasWrapper');
+        const line1 = document.getElementById('line1');
+        const line2 = document.getElementById('line2');
+        const line3 = document.getElementById('line3');
+        
+        // 이미지 로드
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // 파일명에서 확장자 제거
+                currentFileName = file.name.replace(/\.[^/.]+$/, '');
+                document.getElementById('fileName').textContent = file.name;
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        currentImage = img;
+                        
+                        // 기본값 유지 (변경하지 않음)
+                        drawImage();
+                        updateLines();
+                        
+                        document.getElementById('imageInfo').innerHTML = 
+                            `📐 원본: ${img.width} x ${img.height}px | 표시: ${Math.floor(img.width * zoom)} x ${Math.floor(img.height * zoom)}px`;
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        function drawImage() {
+            if (!currentImage) return;
+            
+            const w = currentImage.width * zoom;
+            const h = currentImage.height * zoom;
+            
+            canvas.width = w;
+            canvas.height = h;
+            wrapper.style.width = w + 'px';
+            wrapper.style.height = h + 'px';
+            
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(currentImage, 0, 0, w, h);
+        }
+        
+        function updateLines() {
+            const displayY1 = line1Y * zoom;
+            const displayY2 = line2Y * zoom;
+            const displayX3 = line3X * zoom;
+            
+            line1.style.top = displayY1 + 'px';
+            line2.style.top = displayY2 + 'px';
+            line3.style.left = displayX3 + 'px';
+            
+            line1.setAttribute('data-y', Math.floor(line1Y));
+            line2.setAttribute('data-y', Math.floor(line2Y));
+            line3.setAttribute('data-x', Math.floor(line3X));
+            
+            document.getElementById('line1Input').value = Math.floor(line1Y);
+            document.getElementById('line2Input').value = Math.floor(line2Y);
+            document.getElementById('line3Input').value = Math.floor(line3X);
+        }
+        
+        function updateLineFromInput(lineNum) {
+            if (lineNum === 1) {
+                line1Y = parseInt(document.getElementById('line1Input').value) || 0;
+            } else if (lineNum === 2) {
+                line2Y = parseInt(document.getElementById('line2Input').value) || 0;
+            } else if (lineNum === 3) {
+                line3X = parseInt(document.getElementById('line3Input').value) || 0;
+            }
+            updateLines();
+        }
+        
+        function changeZoom(delta) {
+            zoom = Math.max(0.2, Math.min(2, zoom + delta));
+            drawImage();
+            updateLines();
+            if (currentImage) {
+                document.getElementById('imageInfo').innerHTML = 
+                    `📐 원본: ${currentImage.width} x ${currentImage.height}px | 표시: ${Math.floor(currentImage.width * zoom)} x ${Math.floor(currentImage.height * zoom)}px`;
+            }
+        }
+        
+        function resetZoom() {
+            zoom = 0.5;
+            drawImage();
+            updateLines();
+            if (currentImage) {
+                document.getElementById('imageInfo').innerHTML = 
+                    `📐 원본: ${currentImage.width} x ${currentImage.height}px | 표시: ${Math.floor(currentImage.width * zoom)} x ${Math.floor(currentImage.height * zoom)}px`;
+            }
+        }
+        
+        // 드래그 기능
+        line1.addEventListener('mousedown', (e) => { isDragging = 'line1'; e.preventDefault(); });
+        line2.addEventListener('mousedown', (e) => { isDragging = 'line2'; e.preventDefault(); });
+        line3.addEventListener('mousedown', (e) => { isDragging = 'line3'; e.preventDefault(); });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !currentImage) return;
+            
+            const rect = wrapper.getBoundingClientRect();
+            
+            if (isDragging === 'line1' || isDragging === 'line2') {
+                const y = (e.clientY - rect.top) / zoom;
+                if (isDragging === 'line1') {
+                    line1Y = Math.max(0, Math.min(currentImage.height, y));
+                } else {
+                    line2Y = Math.max(0, Math.min(currentImage.height, y));
+                }
+            } else if (isDragging === 'line3') {
+                const x = (e.clientX - rect.left) / zoom;
+                line3X = Math.max(0, Math.min(currentImage.width, x));
+            }
+            
+            updateLines();
+        });
+        
+        document.addEventListener('mouseup', () => { isDragging = null; });
+        
+        function sliceAndPreview() {
+            if (!currentImage) {
+                alert('먼저 이미지를 불러오세요!');
+                return;
+            }
+            
+            const y1 = Math.min(line1Y, line2Y);
+            const y2 = Math.max(line1Y, line2Y);
+            const xMid = line3X;
+            
+            // Head (전체 너비)
+            const headCanvas = document.createElement('canvas');
+            headCanvas.width = currentImage.width;
+            headCanvas.height = y1;
+            const headCtx = headCanvas.getContext('2d');
+            headCtx.drawImage(currentImage, 0, 0, currentImage.width, y1, 0, 0, currentImage.width, y1);
+            slicedParts.Head = trimTransparent(headCanvas);
+            
+            // Body (전체 너비)
+            const bodyCanvas = document.createElement('canvas');
+            bodyCanvas.width = currentImage.width;
+            bodyCanvas.height = y2 - y1;
+            const bodyCtx = bodyCanvas.getContext('2d');
+            bodyCtx.drawImage(currentImage, 0, y1, currentImage.width, y2 - y1, 0, 0, currentImage.width, y2 - y1);
+            slicedParts.Body = trimTransparent(bodyCanvas);
+            
+            // Foot Left (왼쪽 절반)
+            const footLeftCanvas = document.createElement('canvas');
+            footLeftCanvas.width = xMid;
+            footLeftCanvas.height = currentImage.height - y2;
+            const footLeftCtx = footLeftCanvas.getContext('2d');
+            footLeftCtx.drawImage(currentImage, 0, y2, xMid, currentImage.height - y2, 0, 0, xMid, currentImage.height - y2);
+            slicedParts.Foot_L = trimTransparent(footLeftCanvas);
+            
+            // Foot Right (오른쪽 절반)
+            const footRightCanvas = document.createElement('canvas');
+            footRightCanvas.width = currentImage.width - xMid;
+            footRightCanvas.height = currentImage.height - y2;
+            const footRightCtx = footRightCanvas.getContext('2d');
+            footRightCtx.drawImage(currentImage, xMid, y2, currentImage.width - xMid, currentImage.height - y2, 0, 0, currentImage.width - xMid, currentImage.height - y2);
+            slicedParts.Foot_R = trimTransparent(footRightCanvas);
+            
+            // 미리보기 표시
+            const previewGrid = document.getElementById('previewGrid');
+            previewGrid.innerHTML = '';
+            
+            const parts = [
+                { key: 'Head', label: 'Head (머리)', wide: true },
+                { key: 'Body', label: 'Body (몸통)', wide: true },
+                { key: 'Foot_L', label: 'Foot L (왼발)', wide: false },
+                { key: 'Foot_R', label: 'Foot R (오른발)', wide: false }
+            ];
+            
+            parts.forEach(part => {
+                if (slicedParts[part.key]) {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item' + (part.wide ? ' wide' : '');
+                    
+                    const img = document.createElement('img');
+                    img.src = slicedParts[part.key].toDataURL();
+                    
+                    const name = document.createElement('p');
+                    name.className = 'part-name';
+                    name.textContent = `${currentFileName}-${part.key}.png`;
+                    
+                    const size = document.createElement('p');
+                    size.textContent = `${slicedParts[part.key].width} x ${slicedParts[part.key].height}px`;
+                    
+                    div.appendChild(img);
+                    div.appendChild(name);
+                    div.appendChild(size);
+                    previewGrid.appendChild(div);
+                }
+            });
+            
+            document.getElementById('downloadButtons').style.display = 'grid';
+        }
+        
+        function trimTransparent(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+            
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const alpha = data[(y * canvas.width + x) * 4 + 3];
+                    if (alpha > 10) {
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+            
+            if (minX > maxX || minY > maxY) {
+                const emptyCanvas = document.createElement('canvas');
+                emptyCanvas.width = 1;
+                emptyCanvas.height = 1;
+                return emptyCanvas;
+            }
+            
+            const trimmedCanvas = document.createElement('canvas');
+            trimmedCanvas.width = maxX - minX + 1;
+            trimmedCanvas.height = maxY - minY + 1;
+            const trimmedCtx = trimmedCanvas.getContext('2d');
+            trimmedCtx.drawImage(canvas, minX, minY, trimmedCanvas.width, trimmedCanvas.height, 0, 0, trimmedCanvas.width, trimmedCanvas.height);
+            
+            return trimmedCanvas;
+        }
+        
+        function downloadPart(part) {
+            if (!slicedParts[part]) {
+                alert('먼저 분리를 실행하세요!');
+                return;
+            }
+            
+            const fileName = currentFileName || 'image';
+            const link = document.createElement('a');
+            link.download = `${fileName}-${part}.png`;
+            link.href = slicedParts[part].toDataURL('image/png');
+            link.click();
+        }
+        
+        function downloadAll() {
+            const parts = ['Head', 'Body', 'Foot_L', 'Foot_R'];
+            parts.forEach((part, i) => {
+                if (slicedParts[part]) {
+                    setTimeout(() => downloadPart(part), i * 300);
+                }
+            });
+        }
+        
+        // 초기 라인 위치 설정
+        updateLines();
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create vite:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Skeleton MMORPG Prototype\n\n- React + TypeScript + Vite 프로젝트 세팅\n- 캐릭터 파츠 렌더링 \\(Head + Body + Foot\\)\n- WASD 8방향 이동 + 걷기 애니메이션\n- 좌우 반전 \\(A/D키\\)\n- 앞/뒤 방향 전환 \\(W/S키\\)\n- 카메라 추적 + 타일맵\n- HP/MP 바 + 미니맵 UI\n- 캐릭터 및 무기 에셋 포함\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
