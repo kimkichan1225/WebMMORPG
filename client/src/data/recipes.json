@@ -1,0 +1,224 @@
+{
+  "recipes": {
+    "hp_potion_craft": {
+      "id": "hp_potion_craft",
+      "name": "Craft HP Potion",
+      "nameKo": "HP 포션 제작",
+      "category": "alchemy",
+      "result": {
+        "itemId": "hp_potion_small",
+        "quantity": 3
+      },
+      "materials": [
+        { "itemId": "herbs", "quantity": 5 }
+      ],
+      "levelReq": 1,
+      "craftTime": 2000
+    },
+    "mp_potion_craft": {
+      "id": "mp_potion_craft",
+      "name": "Craft MP Potion",
+      "nameKo": "MP 포션 제작",
+      "category": "alchemy",
+      "result": {
+        "itemId": "mp_potion_small",
+        "quantity": 3
+      },
+      "materials": [
+        { "itemId": "herbs", "quantity": 5 },
+        { "itemId": "stone", "quantity": 2 }
+      ],
+      "levelReq": 3,
+      "craftTime": 2500
+    },
+    "medium_hp_potion_craft": {
+      "id": "medium_hp_potion_craft",
+      "name": "Craft Medium HP Potion",
+      "nameKo": "중형 HP 포션 제작",
+      "category": "alchemy",
+      "result": {
+        "itemId": "hp_potion_medium",
+        "quantity": 2
+      },
+      "materials": [
+        { "itemId": "herbs", "quantity": 10 },
+        { "itemId": "hp_potion_small", "quantity": 2 }
+      ],
+      "levelReq": 10,
+      "craftTime": 4000
+    },
+    "wooden_sword_craft": {
+      "id": "wooden_sword_craft",
+      "name": "Craft Wooden Sword",
+      "nameKo": "나무 검 제작",
+      "category": "smithing",
+      "result": {
+        "itemId": "wooden_sword",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "wood", "quantity": 10 }
+      ],
+      "levelReq": 1,
+      "craftTime": 3000
+    },
+    "wooden_bow_craft": {
+      "id": "wooden_bow_craft",
+      "name": "Craft Wooden Bow",
+      "nameKo": "나무 활 제작",
+      "category": "smithing",
+      "result": {
+        "itemId": "wooden_bow",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "wood", "quantity": 15 }
+      ],
+      "levelReq": 1,
+      "craftTime": 3500
+    },
+    "apprentice_staff_craft": {
+      "id": "apprentice_staff_craft",
+      "name": "Craft Apprentice Staff",
+      "nameKo": "견습 지팡이 제작",
+      "category": "smithing",
+      "result": {
+        "itemId": "apprentice_staff",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "wood", "quantity": 8 },
+        { "itemId": "stone", "quantity": 3 }
+      ],
+      "levelReq": 1,
+      "craftTime": 3000
+    },
+    "rusty_dagger_craft": {
+      "id": "rusty_dagger_craft",
+      "name": "Craft Rusty Dagger",
+      "nameKo": "녹슨 단검 제작",
+      "category": "smithing",
+      "result": {
+        "itemId": "rusty_dagger",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "stone", "quantity": 10 },
+        { "itemId": "wood", "quantity": 5 }
+      ],
+      "levelReq": 1,
+      "craftTime": 2500
+    },
+    "leather_armor_craft": {
+      "id": "leather_armor_craft",
+      "name": "Craft Leather Armor",
+      "nameKo": "가죽 갑옷 제작",
+      "category": "tailoring",
+      "result": {
+        "itemId": "leather_armor",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "wood", "quantity": 5 },
+        { "itemId": "herbs", "quantity": 3 }
+      ],
+      "levelReq": 5,
+      "craftTime": 4000
+    },
+    "leather_helm_craft": {
+      "id": "leather_helm_craft",
+      "name": "Craft Leather Helm",
+      "nameKo": "가죽 투구 제작",
+      "category": "tailoring",
+      "result": {
+        "itemId": "leather_helm",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "wood", "quantity": 3 },
+        { "itemId": "herbs", "quantity": 2 }
+      ],
+      "levelReq": 3,
+      "craftTime": 3000
+    },
+    "cloth_shirt_craft": {
+      "id": "cloth_shirt_craft",
+      "name": "Craft Cloth Shirt",
+      "nameKo": "천 셔츠 제작",
+      "category": "tailoring",
+      "result": {
+        "itemId": "cloth_shirt",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "herbs", "quantity": 8 }
+      ],
+      "levelReq": 1,
+      "craftTime": 2000
+    },
+    "attack_scroll_craft": {
+      "id": "attack_scroll_craft",
+      "name": "Craft Attack Scroll",
+      "nameKo": "공격력 주문서 제작",
+      "category": "enchanting",
+      "result": {
+        "itemId": "attack_scroll",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "herbs", "quantity": 10 },
+        { "itemId": "stone", "quantity": 5 }
+      ],
+      "levelReq": 10,
+      "craftTime": 5000
+    },
+    "defense_scroll_craft": {
+      "id": "defense_scroll_craft",
+      "name": "Craft Defense Scroll",
+      "nameKo": "방어력 주문서 제작",
+      "category": "enchanting",
+      "result": {
+        "itemId": "defense_scroll",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "stone", "quantity": 10 },
+        { "itemId": "wood", "quantity": 5 }
+      ],
+      "levelReq": 10,
+      "craftTime": 5000
+    },
+    "iron_sword_craft": {
+      "id": "iron_sword_craft",
+      "name": "Craft Iron Sword",
+      "nameKo": "철 검 제작",
+      "category": "smithing",
+      "result": {
+        "itemId": "iron_sword",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "stone", "quantity": 20 },
+        { "itemId": "wood", "quantity": 10 }
+      ],
+      "levelReq": 10,
+      "craftTime": 6000
+    },
+    "hunting_bow_craft": {
+      "id": "hunting_bow_craft",
+      "name": "Craft Hunting Bow",
+      "nameKo": "사냥 활 제작",
+      "category": "smithing",
+      "result": {
+        "itemId": "hunting_bow",
+        "quantity": 1
+      },
+      "materials": [
+        { "itemId": "wood", "quantity": 25 },
+        { "itemId": "herbs", "quantity": 5 }
+      ],
+      "levelReq": 10,
+      "craftTime": 6000
+    }
+  }
+}

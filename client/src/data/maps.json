@@ -1,0 +1,323 @@
+{
+  "maps": {
+    "town": {
+      "id": "town",
+      "name": "시작마을",
+      "nameEn": "Starting Town",
+      "width": 40,
+      "height": 40,
+      "bgColor": "#8fbc8f",
+      "ambientColor": "#fff5e6",
+      "tileTypes": {
+        "grass": { "color": "#7ec850", "walkable": true },
+        "dirt": { "color": "#c4a484", "walkable": true },
+        "stone": { "color": "#888888", "walkable": true },
+        "water": { "color": "#4a90d9", "walkable": false },
+        "wall": { "color": "#555555", "walkable": false },
+        "wood": { "color": "#8b4513", "walkable": true }
+      },
+      "zones": [
+        { "type": "wall", "x": 0, "y": 0, "width": 40, "height": 1 },
+        { "type": "wall", "x": 0, "y": 39, "width": 40, "height": 1 },
+        { "type": "wall", "x": 0, "y": 0, "width": 1, "height": 40 },
+        { "type": "wall", "x": 39, "y": 0, "width": 1, "height": 40 },
+        { "type": "stone", "x": 15, "y": 15, "width": 10, "height": 10, "comment": "Town square" },
+        { "type": "dirt", "x": 18, "y": 1, "width": 4, "height": 39, "comment": "Main road" },
+        { "type": "dirt", "x": 1, "y": 18, "width": 38, "height": 4, "comment": "Cross road" },
+        { "type": "water", "x": 30, "y": 30, "width": 5, "height": 5, "comment": "Fountain" }
+      ],
+      "portals": [
+        { "x": 38, "y": 20, "width": 1, "height": 2, "targetMap": "forest", "targetX": 64, "targetY": 640, "name": "숲으로" },
+        { "x": 20, "y": 1, "width": 2, "height": 1, "targetMap": "desert", "targetX": 640, "targetY": 2400, "name": "사막으로" }
+      ],
+      "npcs": [
+        { "id": "village_elder", "x": 400, "y": 400 },
+        { "id": "blacksmith", "x": 600, "y": 400 },
+        { "id": "potion_merchant", "x": 800, "y": 400 },
+        { "id": "tool_master", "x": 1000, "y": 400 }
+      ],
+      "monsterSpawns": [],
+      "resourceSpawns": []
+    },
+    "forest": {
+      "id": "forest",
+      "name": "어둠의 숲",
+      "nameEn": "Dark Forest",
+      "width": 50,
+      "height": 50,
+      "bgColor": "#2d5a27",
+      "ambientColor": "#d4e6d4",
+      "tileTypes": {
+        "grass": { "color": "#4a7c3f", "walkable": true },
+        "dirt": { "color": "#8b6914", "walkable": true },
+        "darkGrass": { "color": "#3a6a2f", "walkable": true },
+        "water": { "color": "#3a7069", "walkable": false },
+        "wall": { "color": "#2d3a2d", "walkable": false },
+        "tree": { "color": "#1a3a1a", "walkable": false }
+      },
+      "zones": [
+        { "type": "wall", "x": 0, "y": 0, "width": 50, "height": 1 },
+        { "type": "wall", "x": 0, "y": 49, "width": 50, "height": 1 },
+        { "type": "wall", "x": 0, "y": 0, "width": 1, "height": 50 },
+        { "type": "wall", "x": 49, "y": 0, "width": 1, "height": 50 },
+        { "type": "dirt", "x": 1, "y": 8, "width": 48, "height": 3, "comment": "Forest path" },
+        { "type": "tree", "x": 5, "y": 15, "width": 3, "height": 3 },
+        { "type": "tree", "x": 15, "y": 20, "width": 4, "height": 4 },
+        { "type": "tree", "x": 30, "y": 15, "width": 3, "height": 3 },
+        { "type": "tree", "x": 40, "y": 25, "width": 3, "height": 3 },
+        { "type": "tree", "x": 10, "y": 35, "width": 4, "height": 4 },
+        { "type": "tree", "x": 35, "y": 38, "width": 3, "height": 3 },
+        { "type": "darkGrass", "x": 20, "y": 25, "width": 15, "height": 15, "comment": "Deep forest" },
+        { "type": "water", "x": 5, "y": 40, "width": 4, "height": 4, "comment": "Forest pond" }
+      ],
+      "portals": [
+        { "x": 1, "y": 10, "width": 1, "height": 2, "targetMap": "town", "targetX": 2368, "targetY": 1280, "name": "마을로" },
+        { "x": 48, "y": 10, "width": 1, "height": 2, "targetMap": "cave", "targetX": 128, "targetY": 640, "name": "동굴로" },
+        { "x": 25, "y": 48, "width": 2, "height": 1, "targetMap": "forest_deep", "targetX": 640, "targetY": 64, "name": "깊은 숲으로" }
+      ],
+      "monsterSpawns": [
+        { "type": "slime", "x": 400, "y": 800, "count": 3 },
+        { "type": "goblin", "x": 800, "y": 1200, "count": 4 },
+        { "type": "wolf", "x": 1500, "y": 1600, "count": 3 },
+        { "type": "goblin", "x": 2000, "y": 1000, "count": 3 }
+      ],
+      "npcs": [],
+      "resourceSpawns": [
+        { "type": "tree", "x": 300, "y": 500, "count": 5 },
+        { "type": "tree", "x": 1200, "y": 800, "count": 4 },
+        { "type": "herb", "x": 600, "y": 1500, "count": 6 },
+        { "type": "mushroom", "x": 1800, "y": 1200, "count": 4 }
+      ]
+    },
+    "forest_deep": {
+      "id": "forest_deep",
+      "name": "깊은 숲",
+      "nameEn": "Deep Forest",
+      "width": 60,
+      "height": 60,
+      "bgColor": "#1a3a1a",
+      "ambientColor": "#aacfaa",
+      "tileTypes": {
+        "grass": { "color": "#3a5a2f", "walkable": true },
+        "dirt": { "color": "#5a4a14", "walkable": true },
+        "darkGrass": { "color": "#2a4a1f", "walkable": true },
+        "water": { "color": "#2a5a49", "walkable": false },
+        "wall": { "color": "#1d2a1d", "walkable": false },
+        "tree": { "color": "#0a2a0a", "walkable": false }
+      },
+      "zones": [
+        { "type": "wall", "x": 0, "y": 0, "width": 60, "height": 1 },
+        { "type": "wall", "x": 0, "y": 59, "width": 60, "height": 1 },
+        { "type": "wall", "x": 0, "y": 0, "width": 1, "height": 60 },
+        { "type": "wall", "x": 59, "y": 0, "width": 1, "height": 60 },
+        { "type": "darkGrass", "x": 1, "y": 1, "width": 58, "height": 58 },
+        { "type": "tree", "x": 10, "y": 10, "width": 5, "height": 5 },
+        { "type": "tree", "x": 40, "y": 15, "width": 6, "height": 6 },
+        { "type": "tree", "x": 20, "y": 35, "width": 5, "height": 5 },
+        { "type": "tree", "x": 45, "y": 40, "width": 5, "height": 5 },
+        { "type": "water", "x": 25, "y": 25, "width": 10, "height": 10, "comment": "Sacred pond" },
+        { "type": "dirt", "x": 8, "y": 1, "width": 4, "height": 20 }
+      ],
+      "portals": [
+        { "x": 10, "y": 1, "width": 2, "height": 1, "targetMap": "forest", "targetX": 1600, "targetY": 2944, "name": "숲으로" }
+      ],
+      "monsterSpawns": [
+        { "type": "wolf", "x": 600, "y": 600, "count": 4 },
+        { "type": "skeleton", "x": 1200, "y": 1200, "count": 5 },
+        { "type": "treant", "x": 2000, "y": 800, "count": 2 },
+        { "type": "wolf", "x": 800, "y": 2000, "count": 3 },
+        { "type": "forest_boss", "x": 1920, "y": 1920, "count": 1, "isBoss": true }
+      ],
+      "npcs": [],
+      "resourceSpawns": [
+        { "type": "tree", "x": 400, "y": 400, "count": 8 },
+        { "type": "rare_herb", "x": 2400, "y": 1600, "count": 3 },
+        { "type": "mushroom", "x": 1600, "y": 2400, "count": 5 }
+      ]
+    },
+    "cave": {
+      "id": "cave",
+      "name": "버려진 광산",
+      "nameEn": "Abandoned Mine",
+      "width": 45,
+      "height": 45,
+      "bgColor": "#2a2a2a",
+      "ambientColor": "#999999",
+      "tileTypes": {
+        "stone": { "color": "#4a4a4a", "walkable": true },
+        "dirt": { "color": "#3a3020", "walkable": true },
+        "darkStone": { "color": "#3a3a3a", "walkable": true },
+        "lava": { "color": "#ff4500", "walkable": false },
+        "wall": { "color": "#1a1a1a", "walkable": false },
+        "crystal": { "color": "#6a5acd", "walkable": false }
+      },
+      "zones": [
+        { "type": "wall", "x": 0, "y": 0, "width": 45, "height": 1 },
+        { "type": "wall", "x": 0, "y": 44, "width": 45, "height": 1 },
+        { "type": "wall", "x": 0, "y": 0, "width": 1, "height": 45 },
+        { "type": "wall", "x": 44, "y": 0, "width": 1, "height": 45 },
+        { "type": "darkStone", "x": 1, "y": 1, "width": 43, "height": 43 },
+        { "type": "stone", "x": 1, "y": 8, "width": 20, "height": 4, "comment": "Main tunnel" },
+        { "type": "stone", "x": 18, "y": 8, "width": 4, "height": 30, "comment": "Vertical tunnel" },
+        { "type": "stone", "x": 18, "y": 20, "width": 20, "height": 4, "comment": "Side tunnel" },
+        { "type": "wall", "x": 5, "y": 15, "width": 8, "height": 8 },
+        { "type": "wall", "x": 30, "y": 30, "width": 6, "height": 6 },
+        { "type": "lava", "x": 35, "y": 35, "width": 5, "height": 5, "comment": "Lava pit" },
+        { "type": "crystal", "x": 8, "y": 30, "width": 2, "height": 2 },
+        { "type": "crystal", "x": 25, "y": 8, "width": 2, "height": 2 }
+      ],
+      "portals": [
+        { "x": 1, "y": 10, "width": 1, "height": 2, "targetMap": "forest", "targetX": 3008, "targetY": 640, "name": "숲으로" },
+        { "x": 20, "y": 43, "width": 2, "height": 1, "targetMap": "cave_deep", "targetX": 640, "targetY": 64, "name": "깊은 광산으로" }
+      ],
+      "monsterSpawns": [
+        { "type": "bat", "x": 400, "y": 600, "count": 5 },
+        { "type": "skeleton", "x": 800, "y": 800, "count": 4 },
+        { "type": "golem", "x": 1400, "y": 1200, "count": 2 },
+        { "type": "skeleton", "x": 1600, "y": 600, "count": 3 }
+      ],
+      "npcs": [],
+      "resourceSpawns": [
+        { "type": "rock", "x": 300, "y": 400, "count": 6 },
+        { "type": "iron_ore", "x": 1000, "y": 800, "count": 4 },
+        { "type": "crystal", "x": 1400, "y": 1400, "count": 3 }
+      ]
+    },
+    "cave_deep": {
+      "id": "cave_deep",
+      "name": "깊은 광산",
+      "nameEn": "Deep Mine",
+      "width": 50,
+      "height": 50,
+      "bgColor": "#1a1a1a",
+      "ambientColor": "#666666",
+      "tileTypes": {
+        "stone": { "color": "#3a3a3a", "walkable": true },
+        "dirt": { "color": "#2a2010", "walkable": true },
+        "darkStone": { "color": "#2a2a2a", "walkable": true },
+        "lava": { "color": "#ff6600", "walkable": false },
+        "wall": { "color": "#0a0a0a", "walkable": false },
+        "crystal": { "color": "#8a7aed", "walkable": false }
+      },
+      "zones": [
+        { "type": "wall", "x": 0, "y": 0, "width": 50, "height": 1 },
+        { "type": "wall", "x": 0, "y": 49, "width": 50, "height": 1 },
+        { "type": "wall", "x": 0, "y": 0, "width": 1, "height": 50 },
+        { "type": "wall", "x": 49, "y": 0, "width": 1, "height": 50 },
+        { "type": "darkStone", "x": 1, "y": 1, "width": 48, "height": 48 },
+        { "type": "stone", "x": 8, "y": 1, "width": 4, "height": 40 },
+        { "type": "stone", "x": 8, "y": 20, "width": 35, "height": 4 },
+        { "type": "lava", "x": 20, "y": 35, "width": 10, "height": 10 },
+        { "type": "crystal", "x": 40, "y": 10, "width": 3, "height": 3 },
+        { "type": "crystal", "x": 15, "y": 40, "width": 3, "height": 3 }
+      ],
+      "portals": [
+        { "x": 10, "y": 1, "width": 2, "height": 1, "targetMap": "cave", "targetX": 1280, "targetY": 2688, "name": "광산으로" }
+      ],
+      "monsterSpawns": [
+        { "type": "golem", "x": 600, "y": 600, "count": 3 },
+        { "type": "skeleton", "x": 1200, "y": 800, "count": 5 },
+        { "type": "fire_elemental", "x": 1600, "y": 1600, "count": 3 },
+        { "type": "cave_boss", "x": 2400, "y": 2400, "count": 1, "isBoss": true }
+      ],
+      "npcs": [],
+      "resourceSpawns": [
+        { "type": "iron_ore", "x": 400, "y": 800, "count": 5 },
+        { "type": "gold_ore", "x": 1800, "y": 600, "count": 3 },
+        { "type": "crystal", "x": 2000, "y": 1200, "count": 4 }
+      ]
+    },
+    "desert": {
+      "id": "desert",
+      "name": "황금 사막",
+      "nameEn": "Golden Desert",
+      "width": 55,
+      "height": 55,
+      "bgColor": "#c2b280",
+      "ambientColor": "#fff8dc",
+      "tileTypes": {
+        "sand": { "color": "#c2b280", "walkable": true },
+        "darkSand": { "color": "#a89860", "walkable": true },
+        "rock": { "color": "#8b7355", "walkable": true },
+        "water": { "color": "#4a90d9", "walkable": false },
+        "wall": { "color": "#5a4a3a", "walkable": false },
+        "cactus": { "color": "#228b22", "walkable": false }
+      },
+      "zones": [
+        { "type": "wall", "x": 0, "y": 0, "width": 55, "height": 1 },
+        { "type": "wall", "x": 0, "y": 54, "width": 55, "height": 1 },
+        { "type": "wall", "x": 0, "y": 0, "width": 1, "height": 55 },
+        { "type": "wall", "x": 54, "y": 0, "width": 1, "height": 55 },
+        { "type": "darkSand", "x": 20, "y": 20, "width": 15, "height": 15, "comment": "Quicksand area" },
+        { "type": "rock", "x": 40, "y": 10, "width": 8, "height": 8, "comment": "Rocky outcrop" },
+        { "type": "rock", "x": 5, "y": 40, "width": 6, "height": 6 },
+        { "type": "water", "x": 25, "y": 40, "width": 5, "height": 5, "comment": "Oasis" },
+        { "type": "cactus", "x": 10, "y": 15, "width": 1, "height": 1 },
+        { "type": "cactus", "x": 35, "y": 25, "width": 1, "height": 1 },
+        { "type": "cactus", "x": 45, "y": 35, "width": 1, "height": 1 }
+      ],
+      "portals": [
+        { "x": 10, "y": 53, "width": 2, "height": 1, "targetMap": "town", "targetX": 1280, "targetY": 128, "name": "마을로" },
+        { "x": 53, "y": 27, "width": 1, "height": 2, "targetMap": "pyramid", "targetX": 64, "targetY": 640, "name": "피라미드로" }
+      ],
+      "monsterSpawns": [
+        { "type": "scorpion", "x": 600, "y": 600, "count": 4 },
+        { "type": "mummy", "x": 1200, "y": 800, "count": 3 },
+        { "type": "sand_worm", "x": 2000, "y": 1500, "count": 2 },
+        { "type": "scorpion", "x": 800, "y": 2000, "count": 5 }
+      ],
+      "npcs": [],
+      "resourceSpawns": [
+        { "type": "cactus_fruit", "x": 400, "y": 400, "count": 4 },
+        { "type": "sandstone", "x": 1600, "y": 600, "count": 5 },
+        { "type": "desert_herb", "x": 1800, "y": 2400, "count": 3 }
+      ]
+    },
+    "pyramid": {
+      "id": "pyramid",
+      "name": "고대 피라미드",
+      "nameEn": "Ancient Pyramid",
+      "width": 40,
+      "height": 40,
+      "bgColor": "#3a3020",
+      "ambientColor": "#aa9970",
+      "tileTypes": {
+        "stone": { "color": "#8b7355", "walkable": true },
+        "sand": { "color": "#a89860", "walkable": true },
+        "darkStone": { "color": "#5a4a3a", "walkable": true },
+        "trap": { "color": "#4a3a2a", "walkable": true },
+        "wall": { "color": "#2a2010", "walkable": false },
+        "treasure": { "color": "#ffd700", "walkable": false }
+      },
+      "zones": [
+        { "type": "wall", "x": 0, "y": 0, "width": 40, "height": 1 },
+        { "type": "wall", "x": 0, "y": 39, "width": 40, "height": 1 },
+        { "type": "wall", "x": 0, "y": 0, "width": 1, "height": 40 },
+        { "type": "wall", "x": 39, "y": 0, "width": 1, "height": 40 },
+        { "type": "darkStone", "x": 1, "y": 1, "width": 38, "height": 38 },
+        { "type": "stone", "x": 1, "y": 8, "width": 30, "height": 4, "comment": "Main corridor" },
+        { "type": "stone", "x": 15, "y": 8, "width": 4, "height": 25, "comment": "Central passage" },
+        { "type": "wall", "x": 5, "y": 20, "width": 8, "height": 8, "comment": "Sealed room" },
+        { "type": "wall", "x": 25, "y": 25, "width": 10, "height": 10, "comment": "Pharaoh chamber" },
+        { "type": "trap", "x": 10, "y": 30, "width": 3, "height": 3 },
+        { "type": "treasure", "x": 35, "y": 5, "width": 2, "height": 2 }
+      ],
+      "portals": [
+        { "x": 1, "y": 10, "width": 1, "height": 2, "targetMap": "desert", "targetX": 3328, "targetY": 1728, "name": "사막으로" }
+      ],
+      "monsterSpawns": [
+        { "type": "mummy", "x": 600, "y": 600, "count": 5 },
+        { "type": "skeleton", "x": 1000, "y": 1200, "count": 6 },
+        { "type": "anubis", "x": 1400, "y": 800, "count": 3 },
+        { "type": "pyramid_boss", "x": 1800, "y": 1800, "count": 1, "isBoss": true }
+      ],
+      "npcs": [],
+      "resourceSpawns": [
+        { "type": "ancient_relic", "x": 2200, "y": 400, "count": 2 },
+        { "type": "gold_ore", "x": 400, "y": 1600, "count": 3 }
+      ]
+    }
+  },
+  "startMap": "town",
+  "startPosition": { "x": 640, "y": 640 }
+}

@@ -1,0 +1,110 @@
+{
+  "quests": {
+    "quest_slime_hunt": {
+      "id": "quest_slime_hunt",
+      "name": "Slime Hunt",
+      "nameKo": "슬라임 사냥",
+      "description": "마을 주변의 슬라임을 처치하세요.",
+      "descriptionKo": "마을 주변에 슬라임이 너무 많아졌네. 10마리만 처치해주게.",
+      "type": "kill",
+      "target": "slime",
+      "targetCount": 10,
+      "levelReq": 1,
+      "rewards": {
+        "exp": 100,
+        "gold": 200,
+        "items": ["hp_potion_small", "hp_potion_small"]
+      },
+      "prereqQuest": null,
+      "npcId": "village_elder"
+    },
+    "quest_gather_herbs": {
+      "id": "quest_gather_herbs",
+      "name": "Gather Herbs",
+      "nameKo": "약초 수집",
+      "description": "숲에서 약초를 수집하세요.",
+      "descriptionKo": "약초가 부족하네. 숲에서 5개만 구해다 주게.",
+      "type": "gather",
+      "target": "herb",
+      "targetCount": 5,
+      "levelReq": 1,
+      "rewards": {
+        "exp": 80,
+        "gold": 150,
+        "items": ["mp_potion_small"]
+      },
+      "prereqQuest": null,
+      "npcId": "village_elder"
+    },
+    "quest_first_weapon": {
+      "id": "quest_first_weapon",
+      "name": "First Weapon",
+      "nameKo": "첫 무기",
+      "description": "대장장이에게 무기를 구입하세요.",
+      "descriptionKo": "좋은 무기가 필요하군. 대장장이에게 가서 무기를 하나 구입하게.",
+      "type": "acquire",
+      "target": "weapon",
+      "targetCount": 1,
+      "levelReq": 1,
+      "rewards": {
+        "exp": 50,
+        "gold": 100
+      },
+      "prereqQuest": "quest_slime_hunt",
+      "npcId": "village_elder"
+    },
+    "quest_advanced_slime": {
+      "id": "quest_advanced_slime",
+      "name": "Advanced Slime Hunt",
+      "nameKo": "고급 슬라임 사냥",
+      "description": "더 강한 슬라임을 처치하세요.",
+      "descriptionKo": "이번엔 더 강한 슬라임이 나타났네. 20마리를 처치해주게.",
+      "type": "kill",
+      "target": "slime",
+      "targetCount": 20,
+      "levelReq": 5,
+      "rewards": {
+        "exp": 300,
+        "gold": 500,
+        "items": ["iron_sword"]
+      },
+      "prereqQuest": "quest_slime_hunt",
+      "npcId": "village_elder"
+    },
+    "quest_gather_wood": {
+      "id": "quest_gather_wood",
+      "name": "Wood Collection",
+      "nameKo": "나무 수집",
+      "description": "나무를 수집하세요.",
+      "descriptionKo": "마을 수리에 나무가 필요하네. 10개를 모아다 주게.",
+      "type": "gather",
+      "target": "wood",
+      "targetCount": 10,
+      "levelReq": 3,
+      "rewards": {
+        "exp": 120,
+        "gold": 180
+      },
+      "prereqQuest": null,
+      "npcId": "village_elder"
+    },
+    "quest_job_change": {
+      "id": "quest_job_change",
+      "name": "Job Change",
+      "nameKo": "전직",
+      "description": "레벨 10에 도달하여 전직하세요.",
+      "descriptionKo": "레벨 10에 도달하면 전직 교관에게 가서 새로운 직업을 선택하게.",
+      "type": "level",
+      "target": "level",
+      "targetCount": 10,
+      "levelReq": 5,
+      "rewards": {
+        "exp": 500,
+        "gold": 1000,
+        "items": ["attack_scroll", "defense_scroll"]
+      },
+      "prereqQuest": "quest_advanced_slime",
+      "npcId": "village_elder"
+    }
+  }
+}

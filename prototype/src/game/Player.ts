@@ -1,5 +1,6 @@
 import type { Direction } from '../types';
 import { CONFIG } from '../types';
+import { drawWeapon, type WeaponType } from './weapons';
 
 interface PlayerImages {
   headFront: HTMLImageElement;
@@ -15,17 +16,20 @@ export class Player {
   y: number;
   direction: Direction = 'down';
   isMoving: boolean = false;
-  facingRight: boolean = false; // 좌우 반전 상태 (D키 누르면 true)
+  facingRight: boolean = false;
+  weapon: WeaponType = 'bone';
+  isAttacking: boolean = false;
+  attackProgress: number = 0;
 
   private images: PlayerImages | null = null;
   private imagesLoaded: boolean = false;
 
-  // 애니메이션
+  // Animation
   private walkFrame: number = 0;
   private walkTimer: number = 0;
   private bounceOffset: number = 0;
 
-  // 스케일 (캐릭터 전체 크기 조절)
+  // Scale
   private scale: number = CONFIG.PLAYER_SCALE;
 
   constructor(x: number, y: number) {
@@ -56,11 +60,6 @@ export class Player {
         if (loadedCount === totalImages) {
           this.images = loadedImages as PlayerImages;
           this.imagesLoaded = true;
-          console.log('Images loaded:', {
-            head: { w: this.images.headFront.width, h: this.images.headFront.height },
-            body: { w: this.images.bodyFront.width, h: this.images.bodyFront.height },
-            foot: { w: this.images.footLeft.width, h: this.images.footLeft.height },
-          });
         }
       };
       img.onerror = () => {
@@ -70,9 +69,24 @@ export class Player {
     });
   }
 
-  update(deltaTime: number, isMoving: boolean, direction: Direction): void {
+  update(deltaTime: number, isMoving: boolean, direction: Direction, weapon?: WeaponType, isAttacking?: boolean): void {
     this.isMoving = isMoving;
     this.direction = direction;
+
+    if (weapon) {
+      this.weapon = weapon;
+    }
+
+    if (isAttacking !== undefined) {
+      this.isAttacking = isAttacking;
+    }
+
+    // Attack animation
+    if (this.isAttacking) {
+      this.attackProgress = Math.min(1, this.attackProgress + deltaTime / 300);
+    } else {
+      this.attackProgress = Math.max(0, this.attackProgress - deltaTime / 150);
+    }
 
     if (isMoving) {
       this.walkTimer += deltaTime;
@@ -111,8 +125,6 @@ export class Player {
     const bodyImg = isFacingBack ? this.images.bodyBack : this.images.bodyFront;
 
     // 좌우 반전 여부 결정
-    // front: D키(오른쪽)일 때 반전
-    // back: A키(왼쪽)일 때 반전 (뒤돌아보면 좌우가 반대)
     const shouldFlip = isFacingBack ? !this.facingRight : this.facingRight;
 
     if (shouldFlip) {
@@ -129,10 +141,7 @@ export class Player {
     const headW = this.images.headFront.width * this.scale;
     const headH = this.images.headFront.height * this.scale;
 
-    // 파츠 간 간격 (겹치지 않도록)
-    const GAP = 2;
-
-    // 걷기 애니메이션: 발 위치 조정
+    // 걷기 애니메이션
     let leftFootOffsetY = 0;
     let rightFootOffsetY = 0;
     if (this.isMoving) {
@@ -145,49 +154,80 @@ export class Player {
       }
     }
 
-    // === 아래에서 위로 배치 ===
-    // screenY = 캐릭터 중심 위치
-
-    // 2. 몸통 (중심 기준)
+    // 파츠 위치 계산
     const bodyX = screenX - bodyW / 2;
     const bodyY = screenY - bodyH / 2 + this.bounceOffset;
 
-    // 1. 발 (몸통 아래에 붙임 - 위로 올림)
-    const footY = bodyY + bodyH - footH * 0.3; // 발을 몸통에 겹치게
+    const footY = bodyY + bodyH - footH * 0.3;
     const footLeftX = screenX - footW - 2;
     const footRightX = screenX + 2;
 
-    // 3. 머리 (몸통 위에 붙임 - 아래로 내림)
     const headX = screenX - headW / 2;
-    const headY = bodyY - headH + headH * 0.15 + this.bounceOffset; // 머리를 몸통에 겹치게
+    const headY = bodyY - headH + headH * 0.15 + this.bounceOffset;
 
-    // 렌더링 순서 (나중에 그린 것이 앞에 보임)
+    // ============ WEAPON ANIMATION ============
+    // Simple, clean weapon swing that matches the slash effect
+    const showWeapon = this.attackProgress > 0;
+
+    // Fast ease out for snappy attack feel
+    const easeOutExpo = (t: number): number => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    const easedProgress = easeOutExpo(this.attackProgress);
+
+    // Base direction angle (where the attack is aimed)
+    let dirAngle = 0;
+    switch (this.direction) {
+      case 'right': dirAngle = 0; break;
+      case 'down': dirAngle = Math.PI / 2; break;
+      case 'left': dirAngle = Math.PI; break;
+      case 'up': dirAngle = -Math.PI / 2; break;
+    }
+
+    // Swing arc matches slash effect: -90° to +45° relative to direction
+    const swingStart = -Math.PI * 0.5;
+    const swingEnd = Math.PI * 0.25;
+    const swingAngle = swingStart + (swingEnd - swingStart) * easedProgress;
+    const weaponAngle = dirAngle + swingAngle;
+
+    // Position weapon near character, offset in attack direction
+    const dist = 22;
+    const weaponX = screenX + Math.cos(dirAngle) * dist;
+    const weaponY = bodyY + bodyH * 0.15 + Math.sin(dirAngle) * dist;
+
+    // Scale
+    const weaponScale = 0.4;
+
+    // Flip for left-side attacks
+    const weaponFlip = this.direction === 'left';
+
+    // Z-order: weapon behind when attacking up
+    const weaponBehind = this.direction === 'up';
+
+    // Draw weapon helper
+    const renderWeapon = () => {
+      if (showWeapon) {
+        drawWeapon(ctx, this.weapon, weaponX, weaponY, weaponAngle, weaponScale, weaponFlip);
+      }
+    };
+
+    // Render character parts with proper z-order
     if (isFacingBack) {
-      // W (뒤를 볼 때): 발 → 머리 → 몸 (몸이 제일 앞)
       ctx.drawImage(this.images.footLeft, footLeftX, footY + leftFootOffsetY, footW, footH);
       ctx.drawImage(this.images.footRight, footRightX, footY + rightFootOffsetY, footW, footH);
       ctx.drawImage(headImg, headX, headY, headW, headH);
+      if (weaponBehind) renderWeapon();
       ctx.drawImage(bodyImg, bodyX, bodyY, bodyW, bodyH);
+      if (!weaponBehind) renderWeapon();
     } else {
-      // S (앞을 볼 때): 몸 → 발 → 머리 (머리가 제일 앞)
       ctx.drawImage(bodyImg, bodyX, bodyY, bodyW, bodyH);
       ctx.drawImage(this.images.footLeft, footLeftX, footY + leftFootOffsetY, footW, footH);
       ctx.drawImage(this.images.footRight, footRightX, footY + rightFootOffsetY, footW, footH);
+      renderWeapon();
       ctx.drawImage(headImg, headX, headY, headW, headH);
     }
 
-    // 좌우 반전 상태 복원
+    // Restore flip state
     if (shouldFlip) {
       ctx.restore();
     }
-
-    // 디버그: 각 파츠 영역 표시 (확인 후 삭제)
-    // ctx.strokeStyle = 'red';
-    // ctx.strokeRect(headX, headY, headW, headH);
-    // ctx.strokeStyle = 'blue';
-    // ctx.strokeRect(bodyX, bodyY, bodyW, bodyH);
-    // ctx.strokeStyle = 'green';
-    // ctx.strokeRect(footLeftX, footY, footW, footH);
-    // ctx.strokeRect(footRightX, footY, footW, footH);
   }
 }

@@ -1,0 +1,94 @@
+{
+  "npcs": {
+    "village_elder": {
+      "id": "village_elder",
+      "name": "Village Elder",
+      "nameKo": "마을 장로",
+      "type": "quest",
+      "x": 400,
+      "y": 300,
+      "dialogue": {
+        "greeting": "환영하네, 젊은 모험가여. 마을에 도움이 필요하다네.",
+        "quest_available": "새로운 임무가 있네. 도와주겠나?",
+        "quest_in_progress": "임무는 잘 진행되고 있는가?",
+        "quest_complete": "훌륭하군! 여기 보상이네."
+      },
+      "quests": ["quest_slime_hunt", "quest_gather_herbs"]
+    },
+    "blacksmith": {
+      "id": "blacksmith",
+      "name": "Blacksmith",
+      "nameKo": "대장장이",
+      "type": "shop",
+      "x": 550,
+      "y": 250,
+      "dialogue": {
+        "greeting": "어서오게. 좋은 무기와 방어구가 있다네.",
+        "buy": "무엇을 살 텐가?",
+        "sell": "흠, 팔 물건이 있나?"
+      },
+      "shop": {
+        "items": [
+          "wooden_sword", "iron_sword", "steel_sword",
+          "wooden_bow", "hunting_bow",
+          "apprentice_staff", "oak_staff",
+          "rusty_dagger", "steel_dagger",
+          "cloth_shirt", "leather_armor", "chain_mail",
+          "leather_helm", "iron_helm"
+        ]
+      }
+    },
+    "potion_merchant": {
+      "id": "potion_merchant",
+      "name": "Potion Merchant",
+      "nameKo": "포션 상인",
+      "type": "shop",
+      "x": 300,
+      "y": 400,
+      "dialogue": {
+        "greeting": "포션이 필요하신가요? 다양한 물약을 준비했어요.",
+        "buy": "어떤 포션을 원하세요?",
+        "sell": "좋은 재료가 있으면 사드릴게요."
+      },
+      "shop": {
+        "items": [
+          "hp_potion_small", "hp_potion_medium", "hp_potion_large",
+          "mp_potion_small", "mp_potion_medium", "mp_potion_large",
+          "attack_scroll", "defense_scroll"
+        ]
+      }
+    },
+    "tool_master": {
+      "id": "tool_master",
+      "name": "Tool Master",
+      "nameKo": "도구 장인",
+      "type": "job",
+      "x": 650,
+      "y": 350,
+      "dialogue": {
+        "greeting": "도구를 바꾸고 싶은가? 생활 도구를 바꿔주지.",
+        "job_available": "어떤 도구를 사용하고 싶은가?",
+        "job_not_ready": "도구 선택을 신중히 하게."
+      }
+    },
+    "mysterious_merchant": {
+      "id": "mysterious_merchant",
+      "name": "Mysterious Merchant",
+      "nameKo": "수상한 상인",
+      "type": "shop",
+      "x": 200,
+      "y": 500,
+      "dialogue": {
+        "greeting": "크크크... 특별한 물건을 찾나?",
+        "buy": "골드만 있다면 뭐든지...",
+        "sell": "좋은 물건이군..."
+      },
+      "shop": {
+        "items": [
+          "steel_sword", "composite_bow", "arcane_staff", "shadow_blade",
+          "plate_armor", "arcane_robe"
+        ]
+      }
+    }
+  }
+}

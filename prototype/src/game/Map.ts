@@ -25,27 +25,43 @@ export class GameMap {
     for (let y = 0; y < this.height; y++) {
       const row: TileType[] = [];
       for (let x = 0; x < this.width; x++) {
-        // 기본은 잔디
-        let tile = TileType.GRASS;
+        // Default is grass
+        let tile: TileType = TileType.GRASS;
 
-        // 맵 가장자리는 벽
+        // Map borders are walls
         if (x === 0 || x === this.width - 1 || y === 0 || y === this.height - 1) {
           tile = TileType.WALL;
         }
-        // 중앙에 흙길
-        else if (x >= 13 && x <= 16) {
+        // Center dirt path (vertical)
+        else if (x >= 18 && x <= 21) {
           tile = TileType.DIRT;
         }
-        // 작은 연못 (오른쪽 상단)
-        else if (x >= 20 && x <= 24 && y >= 5 && y <= 9) {
+        // Center dirt path (horizontal)
+        else if (y >= 18 && y <= 21) {
+          tile = TileType.DIRT;
+        }
+        // Tree zone (top-left) - darker dirt
+        else if (x >= 2 && x <= 9 && y >= 2 && y <= 9) {
+          tile = TileType.DIRT;
+        }
+        // Rock zone (top-right) - dirt
+        else if (x >= 30 && x <= 37 && y >= 2 && y <= 9) {
+          tile = TileType.DIRT;
+        }
+        // Herb zone (bottom-left) - grass with water nearby
+        else if (x >= 2 && x <= 9 && y >= 28 && y <= 37) {
+          tile = TileType.GRASS;
+        }
+        // Pond (bottom area)
+        else if (x >= 5 && x <= 8 && y >= 35 && y <= 38) {
           tile = TileType.WATER;
         }
-        // 작은 연못 (왼쪽 하단)
-        else if (x >= 5 && x <= 8 && y >= 20 && y <= 23) {
+        // Pond (right area)
+        else if (x >= 32 && x <= 36 && y >= 25 && y <= 29) {
           tile = TileType.WATER;
         }
-        // 랜덤하게 흙 패치 추가
-        else if (Math.random() < 0.05) {
+        // Random dirt patches
+        else if (Math.random() < 0.03) {
           tile = TileType.DIRT;
         }
 
