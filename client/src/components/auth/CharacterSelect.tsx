@@ -5,12 +5,9 @@ interface CharacterSelectProps {
   onStartGame: () => void;
 }
 
-type BaseJobType = 'Base' | 'Warrior' | 'Archer' | 'Mage' | 'Thief';
-
 export const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStartGame }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newCharName, setNewCharName] = useState('');
-  const [newCharJob, setNewCharJob] = useState<BaseJobType>('Base');
 
   const {
     characters,
@@ -32,11 +29,11 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStartGame })
       return;
     }
 
-    const success = await createCharacter(newCharName.trim(), newCharJob);
+    // Always create character as Beginner (Base)
+    const success = await createCharacter(newCharName.trim(), 'Base');
     if (success) {
       setIsCreating(false);
       setNewCharName('');
-      setNewCharJob('Base');
     }
   };
 
@@ -77,16 +74,6 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStartGame })
     Fighter: { name: '파이터', color: '#e91e63', desc: '격투가' },
     Dagger: { name: '대거', color: '#673ab7', desc: '쌍단검 암살자' },
     Shuriken: { name: '슈리켄', color: '#3f51b5', desc: '표창 닌자' },
-  };
-
-  // Only base jobs for creation
-  const createableJobs: BaseJobType[] = ['Base', 'Warrior', 'Archer', 'Mage', 'Thief'];
-  const jobInfo: Record<BaseJobType, { name: string; color: string; desc: string }> = {
-    Base: allJobInfo.Base,
-    Warrior: allJobInfo.Warrior,
-    Archer: allJobInfo.Archer,
-    Mage: allJobInfo.Mage,
-    Thief: allJobInfo.Thief,
   };
 
   return (
@@ -150,21 +137,10 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStartGame })
             </div>
 
             <div className="form-group">
-              <label>직업 선택</label>
-              <div className="job-options">
-                {createableJobs.map(job => (
-                  <div
-                    key={job}
-                    className={`job-option ${newCharJob === job ? 'selected' : ''}`}
-                    onClick={() => setNewCharJob(job)}
-                    style={{ borderColor: newCharJob === job ? jobInfo[job].color : '#4a4a6a' }}
-                  >
-                    <span className="job-name" style={{ color: jobInfo[job].color }}>
-                      {jobInfo[job].name}
-                    </span>
-                    <span className="job-desc">{jobInfo[job].desc}</span>
-                  </div>
-                ))}
+              <label>시작 직업</label>
+              <div className="job-info-box">
+                <span className="job-name" style={{ color: '#aaa' }}>초보자</span>
+                <span className="job-desc">모든 캐릭터는 초보자로 시작합니다. Lv.10 이후 전직이 가능합니다.</span>
               </div>
             </div>
 
@@ -381,38 +357,25 @@ export const CharacterSelect: React.FC<CharacterSelectProps> = ({ onStartGame })
           box-sizing: border-box;
         }
 
-        .job-options {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-        }
-
-        .job-option {
-          padding: 12px;
+        .job-info-box {
+          padding: 15px;
           background: rgba(40, 40, 60, 0.6);
           border: 2px solid #4a4a6a;
           border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .job-option:hover {
-          background: rgba(50, 50, 80, 0.6);
-        }
-
-        .job-option.selected {
-          background: rgba(60, 80, 100, 0.6);
+          text-align: center;
         }
 
         .job-name {
           display: block;
           font-weight: bold;
-          margin-bottom: 5px;
+          font-size: 18px;
+          margin-bottom: 8px;
         }
 
         .job-desc {
-          font-size: 11px;
+          font-size: 12px;
           color: #888;
+          line-height: 1.4;
         }
 
         .form-actions {

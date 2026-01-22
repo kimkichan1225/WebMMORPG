@@ -680,6 +680,66 @@ export const drawWeapon = (
       drawStar(-15, -25, 12);
       drawStar(15, -25, 12);
       break;
+
+    case 'fishing_rod':
+      // Fishing rod
+      // Handle
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(-3, -15, 6, 20);
+      ctx.strokeRect(-3, -15, 6, 20);
+      // Rod body
+      ctx.fillStyle = '#654321';
+      ctx.beginPath();
+      ctx.moveTo(-3, -15);
+      ctx.lineTo(3, -15);
+      ctx.lineTo(2, -80);
+      ctx.lineTo(-2, -80);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Rod tip (thinner)
+      ctx.fillStyle = '#4A3520';
+      ctx.beginPath();
+      ctx.moveTo(-1, -80);
+      ctx.lineTo(1, -80);
+      ctx.lineTo(0, -95);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Reel
+      ctx.fillStyle = '#A0A0A0';
+      ctx.beginPath();
+      ctx.arc(6, -10, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#808080';
+      ctx.beginPath();
+      ctx.arc(6, -10, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Line guides
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(0, -40, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, -60, 2, 0, Math.PI * 2);
+      ctx.fill();
+      // Fishing line
+      ctx.strokeStyle = '#4FC3F7';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, -95);
+      ctx.lineTo(5, -100);
+      ctx.lineTo(10, -90);
+      ctx.stroke();
+      // Hook
+      ctx.strokeStyle = '#C0C0C0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(10, -90);
+      ctx.quadraticCurveTo(15, -85, 10, -80);
+      ctx.stroke();
+      break;
   }
 
   ctx.restore();
@@ -717,6 +777,7 @@ export const TOOL_WEAPONS: Record<string, WeaponType> = {
   axe: 'axe',
   pickaxe: 'pickaxe',
   sickle: 'sickle',
+  fishing_rod: 'fishing_rod',
 };
 
 // Re-export type

@@ -1,8 +1,10 @@
+export type NPCType = 'quest' | 'shop' | 'job' | 'fishing' | 'cooking' | 'bank' | 'inn' | 'info';
+
 export interface NPCData {
   id: string;
   name: string;
   nameKo: string;
-  type: 'quest' | 'shop' | 'job';
+  type: NPCType;
   x: number;
   y: number;
   dialogue: {
@@ -14,6 +16,12 @@ export interface NPCData {
     sell?: string;
     job_available?: string;
     job_not_ready?: string;
+    info?: string;
+    inn_rest?: string;
+    bank_deposit?: string;
+    bank_withdraw?: string;
+    fishing_tip?: string;
+    cooking_recipe?: string;
   };
   quests?: string[];
   shop?: {
@@ -25,7 +33,7 @@ export class NPC {
   id: string;
   name: string;
   nameKo: string;
-  type: 'quest' | 'shop' | 'job';
+  type: NPCType;
   x: number;
   y: number;
   dialogue: NPCData['dialogue'];
@@ -75,12 +83,17 @@ export class NPC {
     }
 
     // Different colors based on NPC type
-    const colors = {
+    const colors: Record<NPCType, string> = {
       quest: '#f0c040',
       shop: '#40c0f0',
-      job: '#c040f0'
+      job: '#c040f0',
+      fishing: '#4FC3F7',
+      cooking: '#FF9800',
+      bank: '#FFD700',
+      inn: '#8BC34A',
+      info: '#9E9E9E',
     };
-    const color = colors[this.type];
+    const color = colors[this.type] || '#FFFFFF';
 
     // Body (simple humanoid shape)
     ctx.fillStyle = color;
@@ -117,6 +130,21 @@ export class NPC {
         break;
       case 'job':
         icon = '★';
+        break;
+      case 'fishing':
+        icon = '🎣';
+        break;
+      case 'cooking':
+        icon = '🍳';
+        break;
+      case 'bank':
+        icon = '🏦';
+        break;
+      case 'inn':
+        icon = '🏠';
+        break;
+      case 'info':
+        icon = '?';
         break;
     }
 

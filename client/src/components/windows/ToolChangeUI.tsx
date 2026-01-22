@@ -48,6 +48,16 @@ const TOOLS: ToolInfo[] = [
     skillName: '채집',
     resourceTypes: ['허브', '마나꽃', '희귀약초'],
   },
+  {
+    id: 'fishing_rod',
+    name: 'Fishing Rod',
+    nameKo: '낚싯대',
+    description: '물가에서 낚시를 할 수 있습니다. R키로 낚시를 시작합니다.',
+    color: '#4FC3F7',
+    icon: '🎣',
+    skillName: '낚시',
+    resourceTypes: ['물고기'],
+  },
 ];
 
 export function ToolChangeUI({ isOpen, onClose }: ToolChangeUIProps) {

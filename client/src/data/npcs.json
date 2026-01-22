@@ -89,6 +89,67 @@
           "plate_armor", "arcane_robe"
         ]
       }
+    },
+    "fisherman": {
+      "id": "fisherman",
+      "name": "Fisherman",
+      "nameKo": "낚시꾼",
+      "type": "fishing",
+      "x": 1800,
+      "y": 1800,
+      "dialogue": {
+        "greeting": "좋은 날씨군! 낚시하기 딱 좋아.",
+        "fishing_tip": "연못 근처에서 R키를 누르면 낚시를 시작할 수 있지. 물고기가 물면 빠르게 반응해야 해!"
+      }
+    },
+    "chef": {
+      "id": "chef",
+      "name": "Chef",
+      "nameKo": "요리사",
+      "type": "cooking",
+      "x": 700,
+      "y": 600,
+      "dialogue": {
+        "greeting": "맛있는 요리를 만들어볼까?",
+        "cooking_recipe": "재료만 가져다주면 맛있는 음식을 만들어주지. 곧 요리 시스템이 열릴 거야!"
+      }
+    },
+    "banker": {
+      "id": "banker",
+      "name": "Banker",
+      "nameKo": "은행원",
+      "type": "bank",
+      "x": 500,
+      "y": 600,
+      "dialogue": {
+        "greeting": "안전하게 골드를 보관해드립니다.",
+        "bank_deposit": "얼마를 예금하시겠습니까?",
+        "bank_withdraw": "얼마를 출금하시겠습니까?"
+      }
+    },
+    "innkeeper": {
+      "id": "innkeeper",
+      "name": "Innkeeper",
+      "nameKo": "여관 주인",
+      "type": "inn",
+      "x": 300,
+      "y": 600,
+      "dialogue": {
+        "greeting": "피곤하시다면 여기서 쉬어가세요.",
+        "inn_rest": "10골드만 내시면 HP와 MP를 완전히 회복시켜 드립니다."
+      }
+    },
+    "guide": {
+      "id": "guide",
+      "name": "Village Guide",
+      "nameKo": "마을 안내원",
+      "type": "info",
+      "x": 640,
+      "y": 800,
+      "dialogue": {
+        "greeting": "시작마을에 오신 것을 환영합니다!",
+        "info": "동쪽으로 가면 어둠의 숲이, 북쪽으로 가면 황금 사막이 있습니다. 각종 NPC들이 퀘스트와 아이템을 제공하니 둘러보세요!"
+      }
     }
   }
 }

@@ -23,8 +23,9 @@ const JOB_ASSET_PREFIX: Record<JobType, AssetPrefix> = {
   // Base
   Base: { front: 'Base', back: 'Base' },
   // 1st jobs (note: Worrior is the typo in files for Warrior)
+  // Note: Archer 1st job only has back sprites, front will fallback to Base
   Warrior: { front: 'Worrior', back: 'Worrior' },
-  Archer: { front: 'Archer2-Crossbow', back: 'Archer2-Crossbow' }, // No dedicated Archer-Head, use Crossbow
+  Archer: { front: 'Archer', back: 'Archer' },
   Mage: { front: 'Mage', back: 'Mage' },
   Thief: { front: 'Thief', back: 'Thief' },
   // 2nd jobs - Warrior branch (검, 둔기, 봉)

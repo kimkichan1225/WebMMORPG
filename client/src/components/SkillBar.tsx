@@ -49,7 +49,7 @@ const SkillBar: React.FC<SkillBarProps> = ({ onUseSkill, onUseItem }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle skill slot click
+  // Handle skill slot left click (use skill/item)
   const handleSlotClick = (slotIndex: number, slot: { skillId: string | null; itemId: string | null }) => {
     if (slot.skillId) {
       // Use skill if assigned
@@ -61,10 +61,17 @@ const SkillBar: React.FC<SkillBarProps> = ({ onUseSkill, onUseItem }) => {
         onUseItem?.(slot.itemId);
       }
     } else {
-      // Open assignment menu
+      // Open assignment menu for empty slot
       setSelectedSlot(slotIndex);
       setShowSlotMenu(true);
     }
+  };
+
+  // Handle skill slot right click (open menu to manage slot)
+  const handleSlotRightClick = (e: React.MouseEvent, slotIndex: number) => {
+    e.preventDefault();
+    setSelectedSlot(slotIndex);
+    setShowSlotMenu(true);
   };
 
   // Handle skill assignment
@@ -214,16 +221,7 @@ const SkillBar: React.FC<SkillBarProps> = ({ onUseSkill, onUseItem }) => {
           <div
             key={index}
             onClick={() => handleSlotClick(index, slot)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              if (hasContent) {
-                // Clear slot on right-click
-                clearSlot(index);
-              } else {
-                setSelectedSlot(index);
-                setShowSlotMenu(true);
-              }
-            }}
+            onContextMenu={(e) => handleSlotRightClick(e, index)}
             style={{
               width: 50,
               height: 50,
@@ -342,21 +340,44 @@ const SkillBar: React.FC<SkillBarProps> = ({ onUseSkill, onUseItem }) => {
             <h3 style={{ color: '#FFF', margin: 0, fontSize: 14 }}>
               슬롯 {selectedSlot !== null ? selectedSlot + 1 : ''} 설정
             </h3>
-            <button
-              onClick={() => {
-                setShowSlotMenu(false);
-                setSelectedSlot(null);
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#FFF',
-                fontSize: 18,
-                cursor: 'pointer'
-              }}
-            >
-              ×
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {/* Clear slot button - show if slot has content */}
+              {selectedSlot !== null && (skillSlots[selectedSlot]?.skillId || skillSlots[selectedSlot]?.itemId) && (
+                <button
+                  onClick={() => {
+                    clearSlot(selectedSlot);
+                    setShowSlotMenu(false);
+                    setSelectedSlot(null);
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    background: 'rgba(150, 50, 50, 0.6)',
+                    border: '1px solid #a55',
+                    borderRadius: 4,
+                    color: '#faa',
+                    fontSize: 12,
+                    cursor: 'pointer'
+                  }}
+                >
+                  비우기
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowSlotMenu(false);
+                  setSelectedSlot(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#FFF',
+                  fontSize: 18,
+                  cursor: 'pointer'
+                }}
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -533,7 +554,7 @@ const SkillBar: React.FC<SkillBarProps> = ({ onUseSkill, onUseItem }) => {
             fontSize: 10,
             textAlign: 'center'
           }}>
-            우클릭으로 슬롯 비우기
+            좌클릭: 사용 | 우클릭: 설정 메뉴
           </div>
         </div>
       )}

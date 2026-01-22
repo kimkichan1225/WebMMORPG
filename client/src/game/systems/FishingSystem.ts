@@ -175,13 +175,13 @@ export const FISH_DATA: Record<string, Fish> = {
 
 // Map-specific fishing spots
 export const FISHING_SPOTS: FishingSpot[] = [
-  // Town - beginner spot
+  // Town - beginner spot (fountain at tile 30,30 = pixel 1920,1920)
   {
     id: 'town_pond',
-    x: 200,
-    y: 600,
-    width: 150,
-    height: 100,
+    x: 1920,
+    y: 1920,
+    width: 320,
+    height: 320,
     availableFish: ['carp', 'crucian', 'bass'],
     mapId: 'town',
   },

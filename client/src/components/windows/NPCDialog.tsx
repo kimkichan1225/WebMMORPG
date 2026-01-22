@@ -1,6 +1,7 @@
 import React from 'react';
 import { NPC } from '../../game/entities/NPC';
 import { useQuestStore, Quest, QuestProgress } from '../../stores/questStore';
+import { usePlayerStore } from '../../stores/playerStore';
 
 interface NPCDialogProps {
   isOpen: boolean;
@@ -61,6 +62,43 @@ export const NPCDialog: React.FC<NPCDialogProps> = ({
     }
     onClose();
   };
+
+  // Inn rest functionality
+  const handleInnRest = () => {
+    const playerState = usePlayerStore.getState();
+    const restCost = 10;
+
+    if (playerState.gold >= restCost) {
+      playerState.heal(playerState.maxHp); // Full HP recovery
+      usePlayerStore.setState({
+        mp: playerState.maxMp, // Full MP recovery
+        gold: playerState.gold - restCost
+      });
+      alert('HP와 MP가 완전히 회복되었습니다!');
+    } else {
+      alert('골드가 부족합니다! (필요: 10G)');
+    }
+  };
+
+  // Get additional dialogue based on NPC type
+  const getAdditionalDialogue = () => {
+    switch (npc.type) {
+      case 'fishing':
+        return npc.dialogue.fishing_tip;
+      case 'cooking':
+        return npc.dialogue.cooking_recipe;
+      case 'bank':
+        return npc.dialogue.bank_deposit;
+      case 'inn':
+        return npc.dialogue.inn_rest;
+      case 'info':
+        return npc.dialogue.info;
+      default:
+        return null;
+    }
+  };
+
+  const additionalDialogue = getAdditionalDialogue();
 
   return (
     <div className="npc-dialog">
@@ -148,12 +186,48 @@ export const NPCDialog: React.FC<NPCDialogProps> = ({
           </div>
         )}
 
+        {/* Additional Dialogue for special NPC types */}
+        {additionalDialogue && (
+          <div className="info-section">
+            <div className="info-box">
+              <p>{additionalDialogue}</p>
+            </div>
+          </div>
+        )}
+
         {/* NPC Type Actions */}
         {(npc.type === 'shop' || npc.type === 'job') && (
           <div className="action-section">
             <button className="action-btn" onClick={handleAction}>
               {npc.type === 'shop' ? '상점 열기' : (npc.id === 'tool_master' ? '도구 변경' : '전직하기')}
             </button>
+          </div>
+        )}
+
+        {/* Inn Rest Action */}
+        {npc.type === 'inn' && (
+          <div className="action-section">
+            <button className="action-btn inn-btn" onClick={handleInnRest}>
+              🛏️ 휴식하기 (10G)
+            </button>
+          </div>
+        )}
+
+        {/* Bank Action (placeholder) */}
+        {npc.type === 'bank' && (
+          <div className="action-section">
+            <p style={{ color: '#888', fontSize: '12px', textAlign: 'center' }}>
+              은행 시스템은 곧 추가될 예정입니다.
+            </p>
+          </div>
+        )}
+
+        {/* Cooking Action (placeholder) */}
+        {npc.type === 'cooking' && (
+          <div className="action-section">
+            <p style={{ color: '#888', fontSize: '12px', textAlign: 'center' }}>
+              요리 시스템은 곧 추가될 예정입니다.
+            </p>
           </div>
         )}
       </div>
@@ -319,6 +393,32 @@ export const NPCDialog: React.FC<NPCDialogProps> = ({
 
         .action-btn:hover {
           background: linear-gradient(180deg, #6b8, #597);
+        }
+
+        .inn-btn {
+          background: linear-gradient(180deg, #8BC34A, #689F38);
+        }
+
+        .inn-btn:hover {
+          background: linear-gradient(180deg, #9CCC65, #7CB342);
+        }
+
+        .info-section {
+          margin-bottom: 15px;
+        }
+
+        .info-box {
+          background: rgba(79, 195, 247, 0.1);
+          border: 1px solid rgba(79, 195, 247, 0.3);
+          border-radius: 4px;
+          padding: 10px;
+        }
+
+        .info-box p {
+          margin: 0;
+          color: #ccc;
+          font-size: 13px;
+          line-height: 1.5;
         }
       `}</style>
     </div>

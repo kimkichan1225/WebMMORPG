@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useFishingStore, getFishData } from '../../stores/fishingStore';
 import { usePlayerStore } from '../../stores/playerStore';
+import { useLifeSkillStore } from '../../stores/lifeSkillStore';
 import { FISH_DATA, type FishRarity } from '../../game/systems/FishingSystem';
 
 // Fishing mini-game overlay
@@ -33,6 +34,8 @@ export function FishingGameOverlay() {
       if (result) {
         gainGold(result.price);
         gainExp(result.exp);
+        // Add life skill exp for fishing
+        useLifeSkillStore.getState().gainSkillExp('fishing', result.exp);
       }
     }
   }, [state, onBiteReact, onReelClick, collectFish, gainGold, gainExp]);

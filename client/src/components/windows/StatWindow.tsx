@@ -39,12 +39,14 @@ export function StatWindow({ isOpen, onClose }: StatWindowProps) {
     logging: '🪓',
     mining: '⛏️',
     gathering: '🌾',
+    fishing: '🎣',
   };
 
   const SKILL_COLORS: Record<LifeSkillType, string> = {
     logging: '#8B4513',
     mining: '#708090',
     gathering: '#228B22',
+    fishing: '#4FC3F7',
   };
 
   return (

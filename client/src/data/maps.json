@@ -31,10 +31,15 @@
         { "x": 20, "y": 1, "width": 2, "height": 1, "targetMap": "desert", "targetX": 640, "targetY": 2400, "name": "사막으로" }
       ],
       "npcs": [
-        { "id": "village_elder", "x": 400, "y": 400 },
-        { "id": "blacksmith", "x": 600, "y": 400 },
-        { "id": "potion_merchant", "x": 800, "y": 400 },
-        { "id": "tool_master", "x": 1000, "y": 400 }
+        { "id": "village_elder", "x": 640, "y": 640 },
+        { "id": "blacksmith", "x": 800, "y": 600 },
+        { "id": "potion_merchant", "x": 480, "y": 600 },
+        { "id": "tool_master", "x": 1100, "y": 700 },
+        { "id": "fisherman", "x": 1800, "y": 1750 },
+        { "id": "chef", "x": 1200, "y": 900 },
+        { "id": "banker", "x": 900, "y": 900 },
+        { "id": "innkeeper", "x": 600, "y": 900 },
+        { "id": "guide", "x": 640, "y": 500 }
       ],
       "monsterSpawns": [],
       "resourceSpawns": []
