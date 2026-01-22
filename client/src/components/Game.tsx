@@ -7,6 +7,10 @@ import { useEquipmentStore } from '../stores/equipmentStore';
 import { useQuestStore } from '../stores/questStore';
 import { useLifeSkillStore } from '../stores/lifeSkillStore';
 import { useAuthStore } from '../stores/authStore';
+import { usePartyStore } from '../stores/partyStore';
+import { useGuildStore } from '../stores/guildStore';
+import { useTradeStore } from '../stores/tradeStore';
+import { useGameTimeStore } from '../stores/gameTimeStore';
 import { ToolSelect } from './ToolSelect';
 import { HUD } from './HUD';
 import { StatWindow } from './windows/StatWindow';
@@ -16,11 +20,19 @@ import { ToolChangeUI } from './windows/ToolChangeUI';
 import { NPCDialog } from './windows/NPCDialog';
 import { ShopWindow } from './windows/ShopWindow';
 import { EquipmentWindow } from './windows/EquipmentWindow';
+import { GuildWindow } from './windows/GuildWindow';
+import { TradeWindow } from './windows/TradeWindow';
 import { QuestTracker } from './QuestTracker';
+import { TradeRequestNotification } from './TradeRequestNotification';
+import { DayNightOverlay } from './DayNightOverlay';
 import SkillBar from './SkillBar';
 import { BuffDisplay } from './BuffDisplay';
+import { PartyUI } from './PartyUI';
+import { PlayerContextMenu } from './PlayerContextMenu';
 import { NPC } from '../game/entities/NPC';
 import { useSkillStore } from '../stores/skillStore';
+import { useMultiplayerStore } from '../stores/multiplayerStore';
+import { FishingGameOverlay } from './windows/FishingUI';
 import { CONFIG, TileType, type WeaponType } from '@shared/types';
 import { JOB_WEAPONS } from '../game/weapons';
 import mapsData from '../data/maps.json';
@@ -43,6 +55,7 @@ interface MapDataJSON {
 function Minimap() {
   const { x, y } = usePlayerStore();
   const { currentMapId, currentMapName } = useMapStore();
+  const otherPlayers = useMultiplayerStore((state) => state.otherPlayers);
 
   const MINIMAP_SIZE = 150;
 
@@ -148,6 +161,19 @@ function Minimap() {
           />
         ))}
 
+        {/* Other players (green) */}
+        {Array.from(otherPlayers.values()).map((player) => (
+          <circle
+            key={`player-${player.id}`}
+            cx={(player.x / CONFIG.TILE_SIZE) * TILE_PIXEL}
+            cy={(player.y / CONFIG.TILE_SIZE) * TILE_PIXEL}
+            r={3}
+            fill="#00ff00"
+            stroke="#006600"
+            strokeWidth={1}
+          />
+        ))}
+
         {/* Player position (red) */}
         <circle
           cx={playerTileX * TILE_PIXEL}
@@ -181,11 +207,14 @@ function ControlsHelp() {
       <div>1~6 - 스킬 사용</div>
       <div style={{ color: '#FFD700' }}>마우스 - 조준 (원거리)</div>
       <div>E (꾹) - 채집</div>
+      <div style={{ color: '#4FC3F7' }}>R - 낚시</div>
       <div>F - NPC 대화</div>
       <div>Tab - 스탯창</div>
       <div>I - 인벤토리</div>
       <div>U - 장비창</div>
+      <div style={{ color: '#81C784' }}>G - 길드</div>
       <div>J - 전직</div>
+      <div style={{ color: '#888', marginTop: '3px' }}>우클릭 - 플레이어 메뉴</div>
     </div>
   );
 }
@@ -230,6 +259,7 @@ interface SaveData {
 export function Game() {
   const { toolSelected } = usePlayerStore();
   const { selectedCharacter } = useAuthStore();
+  const { isTradeOpen, setTradeOpen } = useTradeStore();
 
   const [isStatWindowOpen, setStatWindowOpen] = useState(false);
   const [isInventoryOpen, setInventoryOpen] = useState(false);
@@ -238,8 +268,18 @@ export function Game() {
   const [isEquipmentOpen, setEquipmentOpen] = useState(false);
   const [isNPCDialogOpen, setNPCDialogOpen] = useState(false);
   const [isShopOpen, setShopOpen] = useState(false);
+  const [isGuildWindowOpen, setGuildWindowOpen] = useState(false);
   const [currentNPC, setCurrentNPC] = useState<NPC | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Context menu state for right-clicking players
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    playerId: string;
+    playerName: string;
+    x: number;
+    y: number;
+  }>({ isOpen: false, playerId: '', playerName: '', x: 0, y: 0 });
 
   // 캐릭터별 저장 키
   const getSaveKey = useCallback(() => {
@@ -442,15 +482,34 @@ export function Game() {
     }
   }, [selectedCharacter, loadGame]);
 
-  // 자동 저장 (30초마다)
+  // 실시간 저장 - 중요한 상태 변경 시 저장
   useEffect(() => {
     if (!toolSelected) return;
 
-    const autoSaveInterval = setInterval(() => {
-      saveGame();
-    }, 30000);
+    // Subscribe to player store changes
+    const unsubscribe = usePlayerStore.subscribe(
+      (state, prevState) => {
+        // Save when important values change
+        if (
+          state.level !== prevState.level ||
+          state.exp !== prevState.exp ||
+          state.gold !== prevState.gold ||
+          state.hp !== prevState.hp ||
+          state.mp !== prevState.mp ||
+          state.job !== prevState.job ||
+          state.str !== prevState.str ||
+          state.dex !== prevState.dex ||
+          state.int !== prevState.int ||
+          state.vit !== prevState.vit ||
+          state.luk !== prevState.luk ||
+          state.statPoints !== prevState.statPoints
+        ) {
+          saveGame();
+        }
+      }
+    );
 
-    return () => clearInterval(autoSaveInterval);
+    return () => unsubscribe();
   }, [toolSelected, saveGame]);
 
   // 페이지 닫을 때 저장
@@ -463,17 +522,54 @@ export function Game() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [saveGame]);
 
-  // U 키로 장비창 토글
+  // U 키로 장비창 토글, G 키로 길드창 토글
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'u' && toolSelected) {
+      if (!toolSelected) return;
+
+      if (e.key.toLowerCase() === 'u') {
         e.preventDefault();
         setEquipmentOpen(prev => !prev);
+      }
+      if (e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        setGuildWindowOpen(prev => !prev);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toolSelected]);
+
+  // Multiplayer connection - must connect first, then initialize party/guild/trade listeners
+  useEffect(() => {
+    if (selectedCharacter && toolSelected) {
+      // Connect first
+      useMultiplayerStore.getState().connect(selectedCharacter.id, selectedCharacter.name);
+
+      // Wait for socket to connect, then initialize listeners
+      const initTimer = setTimeout(() => {
+        usePartyStore.getState().initializePartyListeners();
+        useGuildStore.getState().initializeGuildListeners();
+        useGuildStore.getState().loadGuildData(selectedCharacter.id);
+        useTradeStore.getState().initializeListeners();
+      }, 500);
+
+      return () => {
+        clearTimeout(initTimer);
+        useMultiplayerStore.getState().disconnect();
+      };
+    }
+  }, [selectedCharacter, toolSelected]);
+
+  // Game time - sync with server for consistent time across all players
+  useEffect(() => {
+    if (toolSelected) {
+      useGameTimeStore.getState().initializeSync();
+      return () => {
+        useGameTimeStore.getState().stopSync();
+      };
+    }
   }, [toolSelected]);
 
   const handleNPCInteract = (npc: NPC) => {
@@ -490,6 +586,24 @@ export function Game() {
     setNPCDialogOpen(false);
     setToolChangeOpen(true);
   };
+
+  // Handle right-click on other players
+  const handlePlayerRightClick = useCallback(
+    (playerId: string, playerName: string, screenX: number, screenY: number) => {
+      setContextMenu({
+        isOpen: true,
+        playerId,
+        playerName,
+        x: screenX,
+        y: screenY,
+      });
+    },
+    []
+  );
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu((prev) => ({ ...prev, isOpen: false }));
+  }, []);
 
   // 스킬 사용 핸들러 (SkillBar에서 호출됨)
   const handleUseSkill = useCallback((skillId: string) => {
@@ -585,6 +699,7 @@ export function Game() {
               }}
             >
               <span><span style={{ color: '#ff0000' }}>●</span> You</span>
+              <span><span style={{ color: '#00ff00' }}>●</span> Player</span>
               <span><span style={{ color: '#ffcc00' }}>●</span> NPC</span>
               <span><span style={{ color: '#4080ff' }}>■</span> Portal</span>
             </div>
@@ -625,7 +740,48 @@ export function Game() {
           onToggleInventory={() => setInventoryOpen(prev => !prev)}
           onToggleJobChange={() => setJobChangeOpen(prev => !prev)}
           onNPCInteract={handleNPCInteract}
+          onPlayerRightClick={handlePlayerRightClick}
         />
+
+        {/* Day/Night Overlay */}
+        {toolSelected && <DayNightOverlay />}
+
+        {/* Fishing Mini-game Overlay */}
+        {toolSelected && <FishingGameOverlay />}
+
+        {/* Multiplayer connection status */}
+        {toolSelected && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '10px',
+              left: '10px',
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              padding: '4px 10px',
+              borderRadius: '4px',
+              fontSize: '11px',
+            }}
+          >
+            <div
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: useMultiplayerStore.getState().isConnected ? '#4CAF50' : '#F44336',
+              }}
+            />
+            <span style={{ color: '#AAA' }}>
+              {useMultiplayerStore.getState().isConnected ? '온라인' : '오프라인'}
+            </span>
+          </div>
+        )}
+
+        {/* Party UI */}
+        {toolSelected && <PartyUI />}
       </div>
 
       {/* UI Windows */}
@@ -653,6 +809,28 @@ export function Game() {
         isOpen={isEquipmentOpen}
         onClose={() => setEquipmentOpen(false)}
       />
+      <GuildWindow
+        isOpen={isGuildWindowOpen}
+        onClose={() => setGuildWindowOpen(false)}
+      />
+
+      {/* Trade Window */}
+      {isTradeOpen && (
+        <TradeWindow onClose={() => setTradeOpen(false)} />
+      )}
+
+      {/* Trade Request Notification */}
+      <TradeRequestNotification />
+
+      {/* Player Context Menu */}
+      <PlayerContextMenu
+        isOpen={contextMenu.isOpen}
+        playerId={contextMenu.playerId}
+        playerName={contextMenu.playerName}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={handleCloseContextMenu}
+      />
 
       {/* Footer info */}
       {toolSelected && (
@@ -664,7 +842,7 @@ export function Game() {
             textAlign: 'center',
           }}
         >
-          <p>Tab: 스탯 | I: 인벤토리 | U: 장비 | J: 전직 | 1~6: 스킬</p>
+          <p>Tab: 스탯 | I: 인벤토리 | U: 장비 | G: 길드 | J: 전직 | 1~6: 스킬</p>
           {lastSaved && (
             <p style={{ color: '#4a4', marginTop: '5px' }}>
               마지막 저장: {lastSaved.toLocaleTimeString()}

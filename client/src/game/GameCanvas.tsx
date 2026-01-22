@@ -36,16 +36,53 @@ import {
 } from './effects';
 import { useSkillStore } from '../stores/skillStore';
 import { useEquipmentStore } from '../stores/equipmentStore';
+import { useFishingStore } from '../stores/fishingStore';
+import { useMultiplayerStore, type OtherPlayer } from '../stores/multiplayerStore';
+import { FISHING_SPOTS, drawFishingSpot } from './systems/FishingSystem';
 import { JOB_WEAPONS } from './weapons';
+
+// Map to store other player instances for rendering
+const otherPlayerInstances = new Map<string, Player>();
+
+// Track which players have active attack effects to avoid duplicates
+const otherPlayerAttackEffects = new Map<string, boolean>();
+
+// Get or create player instance for other players
+function getOrCreateOtherPlayer(playerData: OtherPlayer): Player {
+  let playerInstance = otherPlayerInstances.get(playerData.id);
+
+  if (!playerInstance) {
+    playerInstance = new Player(
+      playerData.x,
+      playerData.y,
+      playerData.job,
+      playerData.name,
+      playerData.level
+    );
+    otherPlayerInstances.set(playerData.id, playerInstance);
+  }
+
+  return playerInstance;
+}
+
+// Clean up player instances that are no longer in the game
+function cleanupOtherPlayers(currentPlayerIds: Set<string>): void {
+  for (const id of otherPlayerInstances.keys()) {
+    if (!currentPlayerIds.has(id)) {
+      otherPlayerInstances.delete(id);
+    }
+  }
+}
 
 interface GameCanvasProps {
   onToggleStatWindow: () => void;
   onToggleInventory: () => void;
   onToggleJobChange: () => void;
   onNPCInteract: (npc: NPC) => void;
+  onPlayerRightClick?: (playerId: string, playerName: string, screenX: number, screenY: number) => void;
 }
 
-export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobChange, onNPCInteract }: GameCanvasProps) {
+export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobChange, onNPCInteract, onPlayerRightClick }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<Player | null>(null);
   const cameraRef = useRef<Camera | null>(null);
@@ -311,6 +348,12 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
     // Update player direction to match attack direction (for weapon animation)
     usePlayerStore.setState({ direction: attackDir });
 
+    // Send attack to server for other players (with target position)
+    const multiplayerStore = useMultiplayerStore.getState();
+    if (multiplayerStore.isConnected) {
+      multiplayerStore.updateCombatState(true, isRanged ? 'ranged' : 'melee', targetX, targetY);
+    }
+
     if (isRanged) {
       // Create projectile effect for ranged attack
       const effectType = currentJob === 'Gunner' ? 'bullet'
@@ -434,21 +477,56 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
     [toolSelected, performAttack]
   );
 
+  // Right-click handler for context menu on other players
+  const handleRightClick = useCallback(
+    (e: MouseEvent) => {
+      e.preventDefault();
+
+      if (!onPlayerRightClick || !cameraRef.current) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Convert screen position to world position
+      const worldX = mouseX + cameraRef.current.x;
+      const worldY = mouseY + cameraRef.current.y;
+
+      // Check if click is near any other player (within 50px)
+      const otherPlayersMap = useMultiplayerStore.getState().otherPlayers;
+      const CLICK_RANGE = 50;
+
+      for (const [playerId, player] of otherPlayersMap) {
+        const dx = worldX - player.x;
+        const dy = worldY - player.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance <= CLICK_RANGE) {
+          // Found a player within range
+          onPlayerRightClick(playerId, player.name, e.clientX, e.clientY);
+          return;
+        }
+      }
+    },
+    [onPlayerRightClick]
+  );
+
   // Attach mouse click listener to canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !toolSelected) return;
 
     canvas.addEventListener('mousedown', handleMouseClick);
-    // Prevent context menu on right click
-    const preventContextMenu = (e: MouseEvent) => e.preventDefault();
-    canvas.addEventListener('contextmenu', preventContextMenu);
+    canvas.addEventListener('contextmenu', handleRightClick);
 
     return () => {
       canvas.removeEventListener('mousedown', handleMouseClick);
-      canvas.removeEventListener('contextmenu', preventContextMenu);
+      canvas.removeEventListener('contextmenu', handleRightClick);
     };
-  }, [handleMouseClick, toolSelected]);
+  }, [handleMouseClick, handleRightClick, toolSelected]);
 
   // Keyboard input handling
   const handleKeyDown = useCallback(
@@ -514,6 +592,28 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
             const nearbyNPC = npcManagerRef.current.getNPCAtPosition(playerX, playerY);
             if (nearbyNPC) {
               onNPCInteract(nearbyNPC);
+            }
+          }
+          break;
+        case 'r':
+          // Start fishing (requires fishing rod tool)
+          e.preventDefault();
+          if (!isDead) {
+            const playerState = usePlayerStore.getState();
+            const fishingStore = useFishingStore.getState();
+            const mapStore = useMapStore.getState();
+
+            // Check if player has fishing rod equipped
+            if (playerState.tool !== 'fishing_rod') {
+              console.log('[Fishing] 낚싯대가 필요합니다. 도구 장인에게서 낚싯대를 장착하세요.');
+              return;
+            }
+
+            if (fishingStore.state === 'idle') {
+              const nearbySpot = fishingStore.isNearFishingSpot(playerX, playerY, mapStore.currentMapId);
+              if (nearbySpot) {
+                fishingStore.startFishing(nearbySpot);
+              }
             }
           }
           break;
@@ -590,7 +690,7 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
                     targetX: playerX,
                     targetY: playerY,
                     direction: direction,
-                    startTime: Date.now(),
+                    progress: 0,
                     duration: effectDuration,
                     color: effectColor
                   });
@@ -651,6 +751,19 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
                       skill.cooldown > 5000 ? 1500 : skill.cooldown > 2000 ? 800 : 500
                     )
                   );
+
+                  // Send skill use to server for other players
+                  const multiplayerStoreForSkill = useMultiplayerStore.getState();
+                  if (multiplayerStoreForSkill.isConnected) {
+                    multiplayerStoreForSkill.sendSkillUse(
+                      slot.skillId,
+                      playerX,
+                      playerY,
+                      targetX,
+                      targetY,
+                      skillDir
+                    );
+                  }
 
                   // Deal damage if it's an attack skill
                   if (skill.damage && monsterManagerRef.current) {
@@ -999,6 +1112,26 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
 
         // Cancel harvesting when moving
         harvestingRef.current = null;
+
+        // Cancel fishing when moving
+        const fishingStore = useFishingStore.getState();
+        if (fishingStore.state !== 'idle' && fishingStore.state !== 'caught') {
+          fishingStore.cancelFishing();
+        }
+
+        // Sync position to server for multiplayer
+        const multiplayerStore = useMultiplayerStore.getState();
+        if (multiplayerStore.isConnected) {
+          multiplayerStore.updatePosition(newX, newY, newDirection, true);
+        }
+      } else {
+        // When stopped, send isMoving=false to server
+        const multiplayerStore = useMultiplayerStore.getState();
+        const currentPlayerState = usePlayerStore.getState();
+        if (multiplayerStore.isConnected && currentPlayerState.isMoving) {
+          // Only send stop once when transitioning from moving to stopped
+          multiplayerStore.updatePosition(currentPlayerState.x, currentPlayerState.y, currentPlayerState.direction, false);
+        }
       }
 
       setMoving(isPlayerMoving);
@@ -1097,6 +1230,12 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
         const updatedState = usePlayerStore.getState();
         npcManagerRef.current.update(deltaTime);
         npcManagerRef.current.updatePlayerProximity(updatedState.x, updatedState.y);
+      }
+
+      // Update fishing
+      const fishingStoreState = useFishingStore.getState();
+      if (fishingStoreState.state !== 'idle') {
+        fishingStoreState.updateFishing(deltaTime);
       }
 
       // Harvesting
@@ -1201,6 +1340,14 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
         resourceManagerRef.current.render(ctx, cameraX, cameraY);
       }
 
+      // Fishing spots
+      const currentMapIdForFishing = useMapStore.getState().currentMapId;
+      const fishingSpotsForMap = FISHING_SPOTS.filter(spot => spot.mapId === currentMapIdForFishing);
+      const animationFrame = Math.floor(Date.now() / 16); // ~60fps animation frame
+      fishingSpotsForMap.forEach(spot => {
+        drawFishingSpot(ctx, spot, cameraX, cameraY, animationFrame);
+      });
+
       // Monsters
       if (monsterManagerRef.current) {
         monsterManagerRef.current.render(ctx, cameraX, cameraY);
@@ -1210,6 +1357,129 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
       if (npcManagerRef.current) {
         npcManagerRef.current.render(ctx, cameraX, cameraY);
       }
+
+      // Other players (multiplayer) - render as actual characters
+      const otherPlayersMap = useMultiplayerStore.getState().otherPlayers;
+      const currentPlayerIds = new Set(otherPlayersMap.keys());
+      cleanupOtherPlayers(currentPlayerIds);
+
+      otherPlayersMap.forEach((otherPlayerData: OtherPlayer) => {
+        const otherPlayerInstance = getOrCreateOtherPlayer(otherPlayerData);
+
+        // Update player instance with latest data
+        otherPlayerInstance.x = otherPlayerData.x;
+        otherPlayerInstance.y = otherPlayerData.y;
+        otherPlayerInstance.setJob(otherPlayerData.job);
+        otherPlayerInstance.setNameAndLevel(otherPlayerData.name, otherPlayerData.level);
+
+        // Determine facing direction based on direction
+        if (otherPlayerData.direction === 'left') {
+          otherPlayerInstance.facingRight = false;
+        } else if (otherPlayerData.direction === 'right') {
+          otherPlayerInstance.facingRight = true;
+        }
+
+        // Update animation state
+        otherPlayerInstance.update(
+          deltaTime,
+          otherPlayerData.isMoving,
+          otherPlayerData.direction,
+          otherPlayerData.weapon as any,
+          otherPlayerData.isAttacking
+        );
+
+        // Render the player
+        otherPlayerInstance.render(ctx, cameraX, cameraY);
+
+        // Draw HP bar above the player
+        const screenX = otherPlayerData.x - cameraX;
+        const screenY = otherPlayerData.y - cameraY;
+        const hpPercent = otherPlayerData.hp / otherPlayerData.maxHp;
+        const hpBarWidth = 50;
+        const hpBarHeight = 6;
+        const hpBarY = screenY - 70;
+
+        ctx.fillStyle = '#333';
+        ctx.fillRect(screenX - hpBarWidth / 2, hpBarY, hpBarWidth, hpBarHeight);
+
+        ctx.fillStyle = hpPercent > 0.5 ? '#4CAF50' : hpPercent > 0.25 ? '#FFC107' : '#F44336';
+        ctx.fillRect(screenX - hpBarWidth / 2, hpBarY, hpBarWidth * hpPercent, hpBarHeight);
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(screenX - hpBarWidth / 2, hpBarY, hpBarWidth, hpBarHeight);
+
+        // Create attack effect for other players - add to skillEffectsRef for animation
+        if (otherPlayerData.isAttacking && !otherPlayerAttackEffects.get(otherPlayerData.id)) {
+          // Mark that we've created an effect for this attack
+          otherPlayerAttackEffects.set(otherPlayerData.id, true);
+
+          const attackDir = otherPlayerData.direction;
+          const attackX = otherPlayerData.x;
+          const attackY = otherPlayerData.y;
+
+          // Use actual target coordinates from attack data
+          const targetX = otherPlayerData.attackTargetX ?? attackX;
+          const targetY = otherPlayerData.attackTargetY ?? attackY;
+
+          if (otherPlayerData.attackType === 'ranged') {
+            // Determine effect type based on job
+            const effectType = ['Archer', 'Bowmaster'].includes(otherPlayerData.job) ? 'arrow'
+              : otherPlayerData.job === 'Gunner' ? 'bullet'
+              : otherPlayerData.job === 'Crossbowman' ? 'crossbow_bolt'
+              : otherPlayerData.job === 'Shuriken' ? 'shuriken'
+              : ['Mage', 'Elemental'].includes(otherPlayerData.job) ? 'magic_missile'
+              : otherPlayerData.job === 'Holy' ? 'holy_bolt'
+              : otherPlayerData.job === 'Dark' ? 'dark_bolt'
+              : 'arrow';
+
+            // Add to skill effects array for proper animation with actual target
+            skillEffectsRef.current.push(
+              createSkillEffect(effectType, attackX, attackY, targetX, targetY, attackDir, 300)
+            );
+          } else {
+            // Melee attack - add slash effect
+            slashEffectRef.current = {
+              x: attackX,
+              y: attackY,
+              direction: attackDir,
+              progress: 0,
+            };
+          }
+        } else if (!otherPlayerData.isAttacking && otherPlayerAttackEffects.get(otherPlayerData.id)) {
+          // Clear attack tracking when attack ends
+          otherPlayerAttackEffects.delete(otherPlayerData.id);
+        }
+
+        // Create skill effect for other players - add to skillEffectsRef for animation
+        if (otherPlayerData.currentSkill) {
+          const skill = otherPlayerData.currentSkill;
+          const skillKey = `${otherPlayerData.id}-${skill.skillId}-${skill.startTime}`;
+
+          // Check if we already created this skill effect
+          if (!otherPlayerAttackEffects.get(skillKey)) {
+            otherPlayerAttackEffects.set(skillKey, true);
+
+            // Add to skill effects array for proper animation
+            skillEffectsRef.current.push(
+              createSkillEffect(
+                skill.skillId || 'slash',
+                skill.x,
+                skill.y,
+                skill.targetX,
+                skill.targetY,
+                skill.direction,
+                500
+              )
+            );
+
+            // Clean up the key after animation duration
+            setTimeout(() => {
+              otherPlayerAttackEffects.delete(skillKey);
+            }, 600);
+          }
+        }
+      });
 
       // Dash ghosts (render before player)
       dashGhostsRef.current.forEach(ghost => {

@@ -107,11 +107,11 @@ export const JOB_ADVANCEMENT_PATH: Record<Job1stType, Job2ndType[]> = {
 export type StatType = 'str' | 'dex' | 'int' | 'vit' | 'luk';
 
 // Tool types
-export type ToolType = 'axe' | 'pickaxe' | 'sickle';
+export type ToolType = 'axe' | 'pickaxe' | 'sickle' | 'fishing_rod';
 
 // Weapon types (including 2nd job weapons)
 export type WeaponType =
-  | 'bone' | 'sword' | 'bow' | 'staff' | 'dagger' | 'axe' | 'pickaxe' | 'sickle'
+  | 'bone' | 'sword' | 'bow' | 'staff' | 'dagger' | 'axe' | 'pickaxe' | 'sickle' | 'fishing_rod'
   // Warrior 2nd job weapons
   | 'great_sword'     // Swordsman (검)
   | 'mace'            // Mace (둔기)
@@ -175,7 +175,7 @@ export interface ChatMessage {
   senderName: string;
   message: string;
   timestamp: number;
-  channel: 'global' | 'party' | 'whisper';
+  channel: 'global' | 'party' | 'whisper' | 'guild';
 }
 
 // Socket events
@@ -183,7 +183,8 @@ export interface ServerToClientEvents {
   'player:joined': (player: PlayerSyncData) => void;
   'player:left': (playerId: string) => void;
   'player:moved': (data: { id: string; x: number; y: number; direction: Direction; isMoving: boolean }) => void;
-  'player:attacked': (data: { id: string; direction: Direction; x: number; y: number }) => void;
+  'player:attacked': (data: { id: string; direction: Direction; x: number; y: number; targetX: number; targetY: number; attackType?: string }) => void;
+  'player:skill': (data: { id: string; skillId: string; x: number; y: number; targetX: number; targetY: number; direction: Direction }) => void;
   'player:damaged': (data: { id: string; hp: number; damage: number }) => void;
   'monster:update': (monsters: MonsterSyncData[]) => void;
   'monster:damaged': (data: { monsterId: number; hp: number; damage: number; attackerId: string }) => void;
@@ -203,14 +204,48 @@ export interface ServerToClientEvents {
   'match:found': (data: { room: MatchRoom }) => void;
   'match:ended': (data: { winner: TeamColor | 'draw'; room: MatchRoom }) => void;
   'match:score_update': (data: { redScore: number; blueScore: number }) => void;
+  // Party events
+  'party:created': (party: Party) => void;
+  'party:disbanded': () => void;
+  'party:invite_received': (invite: PartyInvite) => void;
+  'party:member_joined': (member: PartyMember) => void;
+  'party:member_left': (memberId: string) => void;
+  'party:member_updated': (data: { id: string; hp: number; maxHp: number; level?: number }) => void;
+  'party:leader_changed': (newLeaderId: string) => void;
+  // Guild events
+  'guild:data': (guild: Guild) => void;
+  'guild:invite_received': (invite: GuildInvite) => void;
+  'guild:member_joined': (member: GuildMember) => void;
+  'guild:member_left': (memberId: string) => void;
+  'guild:member_online': (memberId: string) => void;
+  'guild:member_offline': (memberId: string) => void;
+  'guild:rank_changed': (data: { memberId: string; newRank: GuildRank }) => void;
+  'guild:disbanded': () => void;
+  // Trading events
+  'trade:request_received': (request: TradeRequest) => void;
+  'trade:started': (session: TradeSession) => void;
+  'trade:updated': (session: TradeSession) => void;
+  'trade:completed': (session: TradeSession) => void;
+  'trade:cancelled': (data: { sessionId: string; reason: string }) => void;
+  // World boss events
+  'worldboss:announcement': (announcement: WorldBossAnnouncement) => void;
+  'worldboss:update': (boss: WorldBoss) => void;
+  'worldboss:killed': (data: { bossId: string; rewards: Record<string, { exp: number; gold: number }> }) => void;
+  // Dropped items events
+  'item:dropped': (item: DroppedItem) => void;
+  'item:picked_up': (data: { itemId: string; playerId: string }) => void;
+  'item:expired': (itemId: string) => void;
+  // Game time events
+  'time:update': (time: GameTime) => void;
 }
 
 export interface ClientToServerEvents {
-  'player:join': (data: { id?: string; name: string; job: JobType; x: number; y: number }) => void;
+  'player:join': (data: { id?: string; name: string; job: JobType; x: number; y: number; level?: number; hp?: number; maxHp?: number; weapon?: WeaponType }) => void;
   'player:move': (data: { x: number; y: number; direction: Direction; isMoving: boolean }) => void;
-  'player:attack': (data: { direction: Direction; targetMonsterIds: number[]; x?: number; y?: number }) => void;
+  'player:attack': (data: { direction: Direction; targetMonsterIds: number[]; x?: number; y?: number; targetX?: number; targetY?: number; attackType?: string }) => void;
+  'player:skill': (data: { skillId: string; x: number; y: number; targetX: number; targetY: number; direction: Direction }) => void;
   'monster:damage': (data: { monsterId: number; damage: number }) => void;
-  'chat:send': (data: { message: string; channel?: 'global' | 'party' | 'whisper'; targetId?: string }) => void;
+  'chat:send': (data: { message: string; channel?: 'global' | 'party' | 'whisper' | 'guild'; targetId?: string }) => void;
   // Room events
   'room:join': (data: { roomId: string }) => void;
   'room:leave': () => void;
@@ -222,6 +257,33 @@ export interface ClientToServerEvents {
   'match:start': () => void;
   'match:search': (data: { mode: MatchMode; teamSize: number }) => void;
   'match:cancel_search': () => void;
+  // Party events
+  'party:create': () => void;
+  'party:invite': (data: { targetId: string }) => void;
+  'party:invite_accept': (data: { partyId: string }) => void;
+  'party:invite_decline': (data: { partyId: string }) => void;
+  'party:leave': () => void;
+  'party:kick': (data: { targetId: string }) => void;
+  'party:transfer_leader': (data: { targetId: string }) => void;
+  // Guild events
+  'guild:create': (data: { name: string; description?: string }) => void;
+  'guild:invite': (data: { targetCharacterId: string }) => void;
+  'guild:invite_accept': (data: { guildId: string }) => void;
+  'guild:invite_decline': (data: { guildId: string }) => void;
+  'guild:leave': () => void;
+  'guild:kick': (data: { targetId: string }) => void;
+  'guild:promote': (data: { targetId: string; rank: GuildRank }) => void;
+  'guild:disband': () => void;
+  // Trading events
+  'trade:request': (data: { targetId: string }) => void;
+  'trade:accept': (data: { fromId: string }) => void;
+  'trade:decline': (data: { fromId: string }) => void;
+  'trade:update_offer': (data: { items: TradeItem[]; gold: number }) => void;
+  'trade:confirm': () => void;
+  'trade:unconfirm': () => void;
+  'trade:cancel': () => void;
+  // Dropped items events
+  'item:pickup': (data: { itemId: string }) => void;
 }
 
 // Database types (Supabase)
@@ -312,4 +374,190 @@ export interface MatchPlayer {
   kills: number;
   deaths: number;
   assists: number;
+}
+
+// ============================================
+// Party System Types
+// ============================================
+
+export interface PartyMember {
+  id: string;
+  name: string;
+  job: JobType;
+  level: number;
+  hp: number;
+  maxHp: number;
+}
+
+export interface Party {
+  id: string;
+  leaderId: string;
+  members: PartyMember[];
+}
+
+export interface PartyInvite {
+  partyId: string;
+  inviterId: string;
+  inviterName: string;
+}
+
+// ============================================
+// Guild System Types
+// ============================================
+
+export type GuildRank = 'leader' | 'officer' | 'member';
+
+export interface GuildMember {
+  characterId: string;
+  name: string;
+  job: JobType;
+  level: number;
+  rank: GuildRank;
+  isOnline: boolean;
+}
+
+export interface Guild {
+  id: string;
+  name: string;
+  leaderId: string;
+  description: string;
+  members: GuildMember[];
+}
+
+export interface GuildInvite {
+  guildId: string;
+  guildName: string;
+  inviterId: string;
+  inviterName: string;
+}
+
+// Database types for Guild (Supabase)
+export interface DbGuild {
+  id: string;
+  name: string;
+  leader_id: string;
+  description: string;
+  created_at: string;
+}
+
+export interface DbGuildMember {
+  guild_id: string;
+  character_id: string;
+  rank: GuildRank;
+  joined_at: string;
+}
+
+// ============================================
+// Trading System Types
+// ============================================
+
+export interface TradeItem {
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  itemType: ItemType;
+  rarity?: ResourceTier;
+}
+
+export interface TradeOffer {
+  items: TradeItem[];
+  gold: number;
+  confirmed: boolean;
+}
+
+export interface TradeSession {
+  id: string;
+  player1Id: string;
+  player1Name: string;
+  player2Id: string;
+  player2Name: string;
+  player1Offer: TradeOffer;
+  player2Offer: TradeOffer;
+  status: 'pending' | 'active' | 'completed' | 'cancelled';
+}
+
+export interface TradeRequest {
+  fromId: string;
+  fromName: string;
+  toId: string;
+}
+
+// ============================================
+// World Boss System Types
+// ============================================
+
+export interface WorldBoss {
+  id: string;
+  name: string;
+  type: string;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  level: number;
+  mapId: string;
+  spawnTime: number;
+  despawnTime: number;
+  isAlive: boolean;
+  participants: string[]; // Player IDs who damaged the boss
+  damageDealt: Record<string, number>; // playerId -> damage
+}
+
+export interface WorldBossAnnouncement {
+  bossId: string;
+  bossName: string;
+  mapId: string;
+  mapName: string;
+  type: 'spawn' | 'warning' | 'killed';
+  killerName?: string;
+}
+
+// ============================================
+// Dropped Item System Types
+// ============================================
+
+export interface DroppedItem {
+  id: string;
+  itemId: string;
+  itemName: string;
+  itemType: ItemType;
+  quantity: number;
+  rarity?: ResourceTier;
+  x: number;
+  y: number;
+  dropTime: number;
+  ownerId?: string; // If set, only this player can pick up for first 10 seconds
+  expiresAt: number;
+}
+
+// ============================================
+// Day/Night Cycle Types
+// ============================================
+
+export type TimeOfDay = 'dawn' | 'day' | 'dusk' | 'night';
+
+export interface GameTime {
+  hour: number; // 0-23
+  minute: number; // 0-59
+  timeOfDay: TimeOfDay;
+  dayNumber: number;
+}
+
+// ============================================
+// Quest Tracker Types
+// ============================================
+
+export interface QuestObjective {
+  id: string;
+  description: string;
+  current: number;
+  target: number;
+  completed: boolean;
+}
+
+export interface TrackedQuest {
+  questId: string;
+  questName: string;
+  objectives: QuestObjective[];
+  isMain: boolean;
 }

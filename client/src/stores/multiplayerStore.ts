@@ -14,6 +14,20 @@ export interface OtherPlayer {
   hp: number;
   maxHp: number;
   isAttacking: boolean;
+  isMoving: boolean;
+  weapon: string;
+  attackType?: string;
+  attackTargetX?: number;
+  attackTargetY?: number;
+  currentSkill?: {
+    skillId: string;
+    x: number;
+    y: number;
+    targetX: number;
+    targetY: number;
+    direction: Direction;
+    startTime: number;
+  };
 }
 
 export interface ChatMessage {
@@ -37,6 +51,10 @@ interface MultiplayerState {
   messages: ChatMessage[];
   maxMessages: number;
 
+  // Throttle state
+  _lastPositionUpdate: number;
+  _pendingPosition: { x: number; y: number; direction: Direction; isMoving: boolean } | null;
+
   // Actions
   connect: (characterId: string, characterName: string) => void;
   disconnect: () => void;
@@ -45,7 +63,8 @@ interface MultiplayerState {
 
   // Player sync
   updatePosition: (x: number, y: number, direction: Direction, isMoving: boolean) => void;
-  updateCombatState: (isAttacking: boolean) => void;
+  updateCombatState: (isAttacking: boolean, attackType?: string, targetX?: number, targetY?: number) => void;
+  sendSkillUse: (skillId: string, x: number, y: number, targetX: number, targetY: number, direction: Direction) => void;
 
   // Other players
   addPlayer: (player: OtherPlayer) => void;
@@ -58,12 +77,17 @@ interface MultiplayerState {
   clearMessages: () => void;
 }
 
+// Position update throttle interval (ms)
+const POSITION_UPDATE_INTERVAL = 50;
+
 export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   isConnected: false,
   roomId: null,
   otherPlayers: new Map(),
   messages: [],
   maxMessages: 100,
+  _lastPositionUpdate: 0,
+  _pendingPosition: null,
 
   connect: (characterId: string, characterName: string) => {
     const socket = socketService.connect();
@@ -71,14 +95,18 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
     socket.on('connect', () => {
       set({ isConnected: true });
 
-      // Join default room
+      // Join default room with full player data
       const playerStore = usePlayerStore.getState();
       socket.emit('player:join', {
         id: characterId,
         name: characterName,
         job: playerStore.job,
         x: playerStore.x,
-        y: playerStore.y
+        y: playerStore.y,
+        level: playerStore.level,
+        hp: playerStore.hp,
+        maxHp: playerStore.maxHp,
+        weapon: playerStore.weapon,
       });
     });
 
@@ -98,7 +126,9 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
         direction: data.direction || 'down',
         hp: data.hp,
         maxHp: data.maxHp,
-        isAttacking: false
+        isAttacking: false,
+        isMoving: data.isMoving || false,
+        weapon: data.weapon || 'bone',
       });
 
       get().addMessage({
@@ -130,19 +160,46 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
       get().updatePlayer(data.id, {
         x: data.x,
         y: data.y,
-        direction: data.direction
+        direction: data.direction,
+        isMoving: data.isMoving,
       });
     });
 
     socket.on('player:attacked', (data) => {
       get().updatePlayer(data.id, {
-        isAttacking: true
+        isAttacking: true,
+        attackType: data.attackType || 'melee',
+        direction: data.direction,
+        x: data.x,
+        y: data.y,
+        attackTargetX: data.targetX,
+        attackTargetY: data.targetY,
       });
 
       // Reset attack state after animation
       setTimeout(() => {
-        get().updatePlayer(data.id, { isAttacking: false });
+        get().updatePlayer(data.id, { isAttacking: false, attackType: undefined, attackTargetX: undefined, attackTargetY: undefined });
       }, 300);
+    });
+
+    socket.on('player:skill', (data) => {
+      get().updatePlayer(data.id, {
+        currentSkill: {
+          skillId: data.skillId,
+          x: data.x,
+          y: data.y,
+          targetX: data.targetX,
+          targetY: data.targetY,
+          direction: data.direction,
+          startTime: Date.now(),
+        },
+        direction: data.direction,
+      });
+
+      // Clear skill after effect duration
+      setTimeout(() => {
+        get().updatePlayer(data.id, { currentSkill: undefined });
+      }, 500);
     });
 
     socket.on('player:damaged', (data) => {
@@ -176,7 +233,9 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
           direction: p.direction || 'down',
           hp: p.hp,
           maxHp: p.maxHp,
-          isAttacking: p.isAttacking || false
+          isAttacking: p.isAttacking || false,
+          isMoving: p.isMoving || false,
+          weapon: p.weapon || 'bone',
         });
       });
       set({ otherPlayers: newPlayers });
@@ -212,12 +271,30 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
 
   updatePosition: (x: number, y: number, direction: Direction, isMoving: boolean) => {
     const socket = socketService.getSocket();
-    if (socket) {
+    if (!socket) return;
+
+    const now = Date.now();
+    const state = get();
+    const timeSinceLastUpdate = now - state._lastPositionUpdate;
+
+    // Always send immediately when stopping movement
+    if (!isMoving && state._pendingPosition?.isMoving) {
       socket.emit('player:move', { x, y, direction, isMoving });
+      set({ _lastPositionUpdate: now, _pendingPosition: null });
+      return;
+    }
+
+    // Throttle position updates while moving
+    if (timeSinceLastUpdate >= POSITION_UPDATE_INTERVAL) {
+      socket.emit('player:move', { x, y, direction, isMoving });
+      set({ _lastPositionUpdate: now, _pendingPosition: null });
+    } else {
+      // Store pending position to send later if needed
+      set({ _pendingPosition: { x, y, direction, isMoving } });
     }
   },
 
-  updateCombatState: (isAttacking: boolean) => {
+  updateCombatState: (isAttacking: boolean, attackType?: string, targetX?: number, targetY?: number) => {
     const socket = socketService.getSocket();
     if (socket && isAttacking) {
       const playerStore = usePlayerStore.getState();
@@ -225,7 +302,24 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
         direction: playerStore.direction,
         targetMonsterIds: [],
         x: playerStore.x,
-        y: playerStore.y
+        y: playerStore.y,
+        targetX: targetX ?? playerStore.x,
+        targetY: targetY ?? playerStore.y,
+        attackType: attackType || 'melee',
+      });
+    }
+  },
+
+  sendSkillUse: (skillId: string, x: number, y: number, targetX: number, targetY: number, direction: Direction) => {
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('player:skill', {
+        skillId,
+        x,
+        y,
+        targetX,
+        targetY,
+        direction,
       });
     }
   },

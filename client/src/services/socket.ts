@@ -16,7 +16,10 @@ class SocketService {
   private serverUrl: string;
 
   constructor() {
-    this.serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:4000';
+    // In production, connect to same origin (server serves both API and client)
+    // In development, use VITE_SERVER_URL or default to localhost:4000
+    this.serverUrl = import.meta.env.VITE_SERVER_URL ||
+      (import.meta.env.PROD ? '' : 'http://localhost:4000');
   }
 
   connect(): TypedSocket {
