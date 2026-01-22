@@ -36,24 +36,23 @@ export const TradeWindow: React.FC<TradeWindowProps> = ({ onClose }) => {
 
   const handleAddItem = (item: typeof inventoryItems[0]) => {
     // Check if already added
-    const existing = selectedItems.find((i) => i.itemId === item.itemId);
+    const existing = selectedItems.find((i) => i.itemId === item.id);
     if (existing) {
       // Increase quantity up to max
       const newQuantity = Math.min(existing.quantity + 1, item.quantity);
       setSelectedItems(
         selectedItems.map((i) =>
-          i.itemId === item.itemId ? { ...i, quantity: newQuantity } : i
+          i.itemId === item.id ? { ...i, quantity: newQuantity } : i
         )
       );
     } else {
       setSelectedItems([
         ...selectedItems,
         {
-          itemId: item.itemId,
+          itemId: item.id,
           itemName: item.name,
           quantity: 1,
           itemType: item.type,
-          rarity: item.rarity,
         },
       ]);
     }
@@ -302,7 +301,7 @@ export const TradeWindow: React.FC<TradeWindowProps> = ({ onClose }) => {
         >
           {inventoryItems.map((item) => (
             <div
-              key={item.itemId}
+              key={item.id}
               onClick={() => handleAddItem(item)}
               style={{
                 padding: '8px',
@@ -311,12 +310,12 @@ export const TradeWindow: React.FC<TradeWindowProps> = ({ onClose }) => {
                 cursor: 'pointer',
                 textAlign: 'center',
                 fontSize: '11px',
-                border: selectedItems.some((i) => i.itemId === item.itemId)
+                border: selectedItems.some((i) => i.itemId === item.id)
                   ? '2px solid #4a9eff'
                   : '2px solid transparent',
               }}
             >
-              <div style={{ color: RARITY_COLORS[item.rarity || 'common'] }}>
+              <div style={{ color: RARITY_COLORS['common'] }}>
                 {item.name}
               </div>
               <div style={{ color: '#888' }}>x{item.quantity}</div>

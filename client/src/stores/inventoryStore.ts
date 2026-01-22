@@ -39,6 +39,7 @@ export interface InventoryItem {
 interface InventoryState {
   items: InventoryItem[];
   maxSlots: number;
+  gold: number;
 
   // Actions
   addItem: (item: InventoryItem | string, quantity?: number) => boolean;
@@ -48,11 +49,14 @@ interface InventoryState {
   getItem: (itemId: string) => InventoryItem | undefined;
   dropRandomItems: (tier: ResourceTier, dropRate: number) => InventoryItem[];
   clearInventory: () => void;
+  addGold: (amount: number) => void;
+  removeGold: (amount: number) => boolean;
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
   items: [],
   maxSlots: 30,
+  gold: 100,
 
   addItem: (itemOrId, quantity = 1) => {
     const state = get();
@@ -169,7 +173,20 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     return droppedItems;
   },
 
-  clearInventory: () => set({ items: [] }),
+  clearInventory: () => set({ items: [], gold: 100 }),
+
+  addGold: (amount) => {
+    set((state) => ({ gold: state.gold + amount }));
+  },
+
+  removeGold: (amount) => {
+    const state = get();
+    if (state.gold < amount) {
+      return false;
+    }
+    set({ gold: state.gold - amount });
+    return true;
+  },
 }));
 
 // Re-export types
