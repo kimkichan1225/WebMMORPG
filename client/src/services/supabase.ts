@@ -315,6 +315,214 @@ export const questApi = {
   },
 };
 
+// Guild API
+export const guildApi = {
+  async getGuild(guildId: string) {
+    const { data, error } = await supabase
+      .from('guilds')
+      .select('*')
+      .eq('id', guildId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async getGuildByName(name: string) {
+    const { data, error } = await supabase
+      .from('guilds')
+      .select('*')
+      .eq('name', name)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "not found"
+    return data;
+  },
+
+  async getGuildMembers(guildId: string) {
+    // First get all member records
+    const { data: memberData, error: memberError } = await supabase
+      .from('guild_members')
+      .select('*')
+      .eq('guild_id', guildId);
+
+    if (memberError) throw memberError;
+    if (!memberData || memberData.length === 0) return [];
+
+    // Get character info for each member
+    const characterIds = memberData.map(m => m.character_id);
+    const { data: charactersData, error: charactersError } = await supabase
+      .from('characters')
+      .select('id, name, job, level')
+      .in('id', characterIds);
+
+    if (charactersError) throw charactersError;
+
+    // Merge data
+    const charactersMap = new Map(charactersData?.map(c => [c.id, c]) || []);
+    return memberData.map(m => ({
+      ...m,
+      characters: charactersMap.get(m.character_id) || null,
+    }));
+  },
+
+  async getCharacterGuild(characterId: string) {
+    // First check if character is in a guild
+    const { data: memberData, error: memberError } = await supabase
+      .from('guild_members')
+      .select('*')
+      .eq('character_id', characterId)
+      .maybeSingle();
+
+    if (memberError) throw memberError;
+    if (!memberData) return null;
+
+    // Then fetch guild data
+    const { data: guildData, error: guildError } = await supabase
+      .from('guilds')
+      .select('*')
+      .eq('id', memberData.guild_id)
+      .single();
+
+    if (guildError) throw guildError;
+
+    return {
+      ...memberData,
+      guilds: guildData,
+    };
+  },
+
+  async createGuild(leaderId: string, name: string, description?: string) {
+    // Check if name is already taken
+    const existing = await this.getGuildByName(name);
+    if (existing) {
+      throw new Error('Guild name already exists');
+    }
+
+    // Create guild
+    const { data: guild, error: guildError } = await supabase
+      .from('guilds')
+      .insert({
+        name,
+        leader_id: leaderId,
+        description: description || '',
+      })
+      .select()
+      .single();
+
+    if (guildError) throw guildError;
+
+    // Add leader as member
+    const { error: memberError } = await supabase
+      .from('guild_members')
+      .insert({
+        guild_id: guild.id,
+        character_id: leaderId,
+        rank: 'leader',
+      });
+
+    if (memberError) throw memberError;
+
+    return guild;
+  },
+
+  async joinGuild(guildId: string, characterId: string) {
+    const { data, error } = await supabase
+      .from('guild_members')
+      .insert({
+        guild_id: guildId,
+        character_id: characterId,
+        rank: 'member',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async leaveGuild(characterId: string) {
+    // Check if user is leader
+    const membership = await this.getCharacterGuild(characterId);
+    if (membership && membership.rank === 'leader') {
+      throw new Error('Leader cannot leave guild. Transfer leadership or disband.');
+    }
+
+    const { error } = await supabase
+      .from('guild_members')
+      .delete()
+      .eq('character_id', characterId);
+
+    if (error) throw error;
+  },
+
+  async kickMember(guildId: string, targetCharacterId: string) {
+    const { error } = await supabase
+      .from('guild_members')
+      .delete()
+      .eq('guild_id', guildId)
+      .eq('character_id', targetCharacterId);
+
+    if (error) throw error;
+  },
+
+  async updateMemberRank(guildId: string, characterId: string, rank: 'leader' | 'officer' | 'member') {
+    const { data, error } = await supabase
+      .from('guild_members')
+      .update({ rank })
+      .eq('guild_id', guildId)
+      .eq('character_id', characterId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async transferLeadership(guildId: string, newLeaderId: string, oldLeaderId: string) {
+    // Update new leader
+    await this.updateMemberRank(guildId, newLeaderId, 'leader');
+    // Demote old leader to officer
+    await this.updateMemberRank(guildId, oldLeaderId, 'officer');
+
+    // Update guild leader_id
+    const { error } = await supabase
+      .from('guilds')
+      .update({ leader_id: newLeaderId })
+      .eq('id', guildId);
+
+    if (error) throw error;
+  },
+
+  async disbandGuild(guildId: string) {
+    // Delete all members first
+    await supabase
+      .from('guild_members')
+      .delete()
+      .eq('guild_id', guildId);
+
+    // Delete guild
+    const { error } = await supabase
+      .from('guilds')
+      .delete()
+      .eq('id', guildId);
+
+    if (error) throw error;
+  },
+
+  async updateGuildDescription(guildId: string, description: string) {
+    const { data, error } = await supabase
+      .from('guilds')
+      .update({ description })
+      .eq('id', guildId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+};
+
 // Auto-save helper
 export class AutoSave {
   private saveInterval: number | null = null;
