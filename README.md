@@ -2,6 +2,11 @@
 
 브라우저 기반 2D MMORPG 게임
 
+[![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](https://webmmorpg-production.up.railway.app/)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/kimkichan1225/WebMMORPG)
+
+**[🎮 Live Demo](https://webmmorpg-production.up.railway.app/)** | **[📂 GitHub](https://github.com/kimkichan1225/WebMMORPG)**
+
 ## 기술 스택
 
 ### Frontend
