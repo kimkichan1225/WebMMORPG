@@ -114,157 +114,66 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ## 문제 해결 사례
 
-Railway 배포 과정에서 발생한 문제들과 해결 방법입니다.
+### 1. 공격 방향 버그
 
-### 1. TradeWindow.tsx TypeScript 오류
+❗ **문제**
+- 플레이어 공격 시 방향이 잘못된 곳으로 표시됨
+- 다른 플레이어에게 공격 방향이 동기화되지 않음
 
-**문제**
-```
-Property 'gold' does not exist on InventoryState
-Property 'itemId' does not exist on InventoryItem
-Property 'rarity' does not exist on InventoryItem
-```
+💡 **해결책**
+- `player:attack` 이벤트에 방향, 위치, 타겟 좌표 데이터 추가
+- 서버에서 공격 방향을 브로드캐스트하여 모든 클라이언트에 동기화
 
-**원인**
-- `InventoryItem` 인터페이스에 `id`, `name`, `type`, `quantity`만 정의됨
-- `TradeWindow.tsx`에서 존재하지 않는 `itemId`, `rarity`, `gold` 속성 접근
-
-**해결**
-1. `inventoryStore.ts`에 `gold` 속성 및 `addGold()`, `removeGold()` 메서드 추가
-2. `TradeWindow.tsx`에서 `item.itemId` → `item.id`로 수정
-3. 존재하지 않는 `item.rarity` 참조 제거
-
-**결과**: 클라이언트 빌드 성공
+✅ **결과**
+- 정확한 공격 방향 표시, 멀티플레이어 공격 동기화 완료
 
 ---
 
-### 2. guildApi Export 오류
+### 2. 게임 시간 동기화
 
-**문제**
-```
-Module '"../services/supabase"' has no exported member 'guildApi'
-```
+❗ **문제**
+- 각 클라이언트가 독립적으로 시간을 계산하여 플레이어마다 다른 시간 표시
+- 낮/밤 주기가 플레이어별로 다르게 적용됨
 
-**원인**
-- 로컬에서 `guildApi`를 추가했지만 Git에 커밋되지 않음
-- Railway는 GitHub 저장소의 코드를 사용하므로 로컬 변경사항이 반영되지 않음
+💡 **해결책**
+- 서버에서 게임 시간 관리 (`gameTime` 상태, 1초 = 1게임분)
+- 5초마다 `time:update` 이벤트로 모든 클라이언트에 브로드캐스트
+- 클라이언트는 서버 시간 수신 후 로컬 보간으로 부드러운 시간 흐름
 
-**해결**
-- `client/src/services/supabase.ts` 파일을 Git에 커밋 및 푸시
-
-**결과**: Import 오류 해결
+✅ **결과**
+- 모든 플레이어가 동일한 게임 시간 공유, 일관된 낮/밤 주기
 
 ---
 
-### 3. fishing_rod 타입 오류
+### 3. 성능 최적화
 
-**문제**
-```
-Property 'fishing_rod' is missing in type '{ axe: "logging"; pickaxe: "mining"; sickle: "gathering"; }'
-```
+❗ **문제**
+- 게임 루프에서 불필요한 리렌더링 발생
+- 많은 플레이어/몬스터 시 프레임 드롭
 
-**원인**
-- `TOOL_TO_SKILL` Record에 `fishing_rod` 키가 누락
-- 로컬 파일에는 있지만 Git에 커밋되지 않음
+💡 **해결책**
+- `React.memo`로 UI 컴포넌트 메모이제이션 (PartyUI, SkillBar, ChatBox 등)
+- `useMemo`로 선택자 최적화, Zustand 상태 구독 최소화
+- Canvas 렌더링과 React 상태 분리
 
-**해결**
-- `client/src/stores/lifeSkillStore.ts` 파일을 Git에 커밋 및 푸시
-
-**결과**: 타입 오류 해결
+✅ **결과**
+- 불필요한 리렌더링 제거, 안정적인 60fps 유지
 
 ---
 
-### 4. StatWindow fishing 속성 누락
+### 4. Railway 서버 배포 오류
 
-**문제**
-```
-Property 'fishing' is missing in type '{ logging: string; mining: string; gathering: string; }'
-```
+❗ **문제**
+- TypeScript 빌드 오류 (타입 불일치, 누락된 export)
+- 서버 시작 경로 오류 (`Cannot find module dist/index.js`)
+- 클라이언트 정적 파일 경로 오류 (`ENOENT: no such file`)
+- Supabase 환경변수 미인식
 
-**원인**
-- `SKILL_ICONS`와 `SKILL_COLORS` Record에 `fishing` 키 누락
-- 로컬에서 추가했지만 커밋되지 않음
+💡 **해결책**
+- 타입 오류: `InventoryItem` 인터페이스에 `gold` 추가, 속성명 수정 (`itemId` → `id`)
+- 서버 경로: `tsconfig.json`의 `rootDir` 설정으로 인한 출력 구조 파악, start 스크립트를 `dist/server/src/index.js`로 수정
+- 정적 파일: `__dirname` 기준 경로를 `../../../../client/dist`로 수정
+- 환경변수: Vite는 `VITE_` 접두사 필요, Railway Variables에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 추가 후 재빌드
 
-**해결**
-- `client/src/components/windows/StatWindow.tsx`에 fishing 아이콘(🎣) 및 색상(#4FC3F7) 추가 후 커밋
-
-**결과**: 빌드 성공
-
----
-
-### 5. 서버 시작 경로 오류
-
-**문제**
-```
-Error: Cannot find module '/app/server/dist/index.js'
-```
-
-**원인**
-- `tsconfig.json`의 `rootDir: ".."` 설정으로 인해 빌드 출력이 `dist/server/src/index.js`에 생성됨
-- `package.json`의 start 스크립트는 `dist/index.js`를 찾음
-
-**해결**
-- `server/package.json`의 start 스크립트 수정:
-  ```json
-  "start": "node dist/server/src/index.js"
-  ```
-
-**결과**: 서버 정상 시작
-
----
-
-### 6. 클라이언트 정적 파일 경로 오류
-
-**문제**
-```
-Error: ENOENT: no such file or directory, stat '/app/server/dist/client/dist/index.html'
-Serving static files from: /app/server/dist/client/dist
-```
-
-**원인**
-- 서버 코드의 `__dirname`이 `/app/server/dist/server/src/`를 가리킴
-- `../../client/dist` 경로가 `/app/server/dist/client/dist`로 잘못 해석됨
-- 실제 클라이언트 빌드 위치: `/app/client/dist`
-
-**해결**
-- `server/src/index.ts`에서 경로 수정:
-  ```typescript
-  // 수정 전
-  const clientDistPath = path.join(__dirname, '../../client/dist');
-
-  // 수정 후
-  const clientDistPath = path.join(__dirname, '../../../../client/dist');
-  ```
-
-**결과**: 정적 파일 정상 서빙
-
----
-
-### 7. Supabase Key 오류
-
-**문제**
-```
-Uncaught Error: supabaseKey is required.
-```
-
-**원인**
-- Vite는 `VITE_` 접두사가 있는 환경변수만 클라이언트 빌드에 포함
-- Railway Variables에 `SUPABASE_ANON_KEY`만 설정하고 `VITE_SUPABASE_ANON_KEY`는 미설정
-
-**해결**
-1. Railway Variables에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 추가
-2. 빈 커밋으로 새 빌드 트리거 (환경변수는 빌드 시점에 포함됨)
-
-**결과**: 클라이언트에서 Supabase 정상 연결
-
----
-
-## 교훈
-
-1. **로컬 변경사항은 반드시 커밋**: 로컬에서 작동해도 Git에 커밋하지 않으면 배포 환경에 반영되지 않음
-
-2. **TypeScript rootDir 주의**: `rootDir` 설정이 빌드 출력 구조에 영향을 미침
-
-3. **Vite 환경변수 규칙**: 클라이언트에서 사용할 환경변수는 `VITE_` 접두사 필수
-
-4. **빌드 시점 vs 런타임**: Vite 환경변수는 빌드 시점에 번들에 포함되므로, 변수 변경 후 재빌드 필요
+✅ **결과**
+- Railway 배포 성공, 클라이언트/서버 통합 서빙 정상 작동
