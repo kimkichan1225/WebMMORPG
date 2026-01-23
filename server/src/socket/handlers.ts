@@ -19,6 +19,28 @@ interface GameState {
   monsters: Map<number, MonsterSyncData>;
 }
 
+// Skill cooldown tracking (playerId -> { skillId -> lastUsedTime })
+const playerSkillCooldowns = new Map<string, Map<string, number>>();
+
+// Skill data (simplified - in production this should come from DB or config)
+const SKILL_DATA: Record<string, { cooldown: number; mpCost: number }> = {
+  'warrior_slash': { cooldown: 500, mpCost: 5 },
+  'warrior_shield_bash': { cooldown: 3000, mpCost: 15 },
+  'warrior_charge': { cooldown: 8000, mpCost: 25 },
+  'archer_power_shot': { cooldown: 1000, mpCost: 10 },
+  'archer_multishot': { cooldown: 5000, mpCost: 20 },
+  'archer_rain_of_arrows': { cooldown: 10000, mpCost: 35 },
+  'mage_fireball': { cooldown: 1500, mpCost: 15 },
+  'mage_ice_spike': { cooldown: 2000, mpCost: 20 },
+  'mage_meteor': { cooldown: 15000, mpCost: 50 },
+  'thief_backstab': { cooldown: 800, mpCost: 10 },
+  'thief_smoke_bomb': { cooldown: 5000, mpCost: 15 },
+  'thief_shadow_step': { cooldown: 6000, mpCost: 25 },
+};
+
+// Room/Map management
+const playerRooms = new Map<string, string>(); // playerId -> roomId (mapId)
+
 // Party state management
 const parties = new Map<string, Party>();
 const playerParties = new Map<string, string>(); // playerId -> partyId
@@ -141,46 +163,144 @@ export function setupSocketHandlers(
     }
   });
 
-  // Player skill use
+  // Player damaged (self-report for party HP sync)
+  socket.on('player:damaged_self', (data: { hp: number; maxHp: number; damage: number }) => {
+    const player = gameState.players.get(socket.id);
+    if (!player) return;
+
+    // Update player HP in game state
+    player.hp = data.hp;
+    player.maxHp = data.maxHp;
+
+    // Update party member HP if in a party
+    updatePartyMemberHp(io, socket.id, data.hp, data.maxHp);
+
+    // Broadcast to other players (for HP bar display)
+    socket.broadcast.emit('player:damaged', {
+      id: socket.id,
+      hp: data.hp,
+      damage: data.damage,
+    });
+  });
+
+  // Player skill use with server-side cooldown validation
   socket.on('player:skill', (data) => {
     const player = gameState.players.get(socket.id);
-    if (player) {
-      // Broadcast skill to other players
-      socket.broadcast.emit('player:skill', {
-        id: socket.id,
-        skillId: data.skillId,
-        x: data.x,
-        y: data.y,
-        targetX: data.targetX,
-        targetY: data.targetY,
-        direction: data.direction,
+    if (!player) return;
+
+    const skillId = data.skillId;
+    const skillData = SKILL_DATA[skillId];
+    const now = Date.now();
+
+    // Validate cooldown if skill data exists
+    if (skillData) {
+      let playerCooldowns = playerSkillCooldowns.get(socket.id);
+      if (!playerCooldowns) {
+        playerCooldowns = new Map();
+        playerSkillCooldowns.set(socket.id, playerCooldowns);
+      }
+
+      const lastUsed = playerCooldowns.get(skillId) || 0;
+      if (now - lastUsed < skillData.cooldown) {
+        // Skill is on cooldown, ignore (client should also validate but server is authoritative)
+        console.log(`Skill ${skillId} on cooldown for player ${socket.id}`);
+        return;
+      }
+
+      // Update cooldown
+      playerCooldowns.set(skillId, now);
+    }
+
+    // Broadcast skill to other players
+    socket.broadcast.emit('player:skill', {
+      id: socket.id,
+      skillId: data.skillId,
+      x: data.x,
+      y: data.y,
+      targetX: data.targetX,
+      targetY: data.targetY,
+      direction: data.direction,
+    });
+  });
+
+  // Monster damage - broadcast to other players (client-authoritative)
+  socket.on('monster:damage', (data: { monsterId: number; damage: number; newHp: number; killed: boolean; exp?: number }) => {
+    const player = gameState.players.get(socket.id);
+    if (!player) return;
+
+    if (data.killed) {
+      // Broadcast monster killed to other players
+      socket.broadcast.emit('monster:killed', {
+        monsterId: data.monsterId,
+        killerId: socket.id,
+        exp: data.exp || 0,
+      });
+    } else {
+      // Broadcast monster damage to other players
+      socket.broadcast.emit('monster:damaged', {
+        monsterId: data.monsterId,
+        hp: data.newHp,
+        damage: data.damage,
+        attackerId: socket.id,
       });
     }
   });
 
-  // Monster damage (alternative handler)
-  socket.on('monster:damage', (data) => {
-    const monster = gameState.monsters.get(data.monsterId);
+  // Item dropped (from monster kill or player drop)
+  socket.on('item:dropped', (item: any) => {
+    // Broadcast to all other players
+    socket.broadcast.emit('item:dropped', item);
+  });
+
+  // Item pickup
+  socket.on('item:pickup', (data: { itemId: string }) => {
+    // Broadcast to all players that item was picked up
+    io.emit('item:picked_up', {
+      itemId: data.itemId,
+      playerId: socket.id,
+    });
+  });
+
+  // Room/Map management
+  socket.on('room:join', (data: { roomId: string }) => {
     const player = gameState.players.get(socket.id);
+    if (!player) return;
 
-    if (monster && monster.isAlive && player) {
-      monster.hp -= data.damage;
+    const oldRoomId = playerRooms.get(socket.id);
 
-      if (monster.hp <= 0) {
-        monster.isAlive = false;
-        io.emit('monster:killed', {
-          monsterId: data.monsterId,
-          killerId: socket.id,
-          exp: 25,
-        });
-      } else {
-        io.emit('monster:damaged', {
-          monsterId: data.monsterId,
-          hp: monster.hp,
-          damage: data.damage,
-          attackerId: socket.id,
-        });
+    // Leave old room if exists
+    if (oldRoomId) {
+      socket.leave(`map:${oldRoomId}`);
+      socket.to(`map:${oldRoomId}`).emit('player:left', socket.id);
+    }
+
+    // Join new room
+    socket.join(`map:${data.roomId}`);
+    playerRooms.set(socket.id, data.roomId);
+
+    // Get all players in the new room
+    const playersInRoom: PlayerSyncData[] = [];
+    for (const [playerId, p] of gameState.players) {
+      if (playerRooms.get(playerId) === data.roomId && playerId !== socket.id) {
+        playersInRoom.push(p);
       }
+    }
+
+    // Send existing players in room to the joining player
+    socket.emit('room:players', playersInRoom);
+    socket.emit('room:joined', { roomId: data.roomId });
+
+    // Notify other players in the room about the new player
+    socket.to(`map:${data.roomId}`).emit('player:joined', player);
+  });
+
+  socket.on('room:leave', () => {
+    const roomId = playerRooms.get(socket.id);
+    if (roomId) {
+      socket.leave(`map:${roomId}`);
+      socket.to(`map:${roomId}`).emit('player:left', socket.id);
+      playerRooms.delete(socket.id);
+      socket.emit('room:left');
     }
   });
 
@@ -309,8 +429,12 @@ export function setupSocketHandlers(
       inviterName: player.name,
     };
 
-    // Store pending invite
+    // Store pending invite (with duplicate check)
     const targetInvites = pendingInvites.get(data.targetId) || [];
+
+    // Check for duplicate invite from same party
+    if (targetInvites.some(i => i.partyId === partyId)) return;
+
     targetInvites.push(invite);
     pendingInvites.set(data.targetId, targetInvites);
 
@@ -472,6 +596,16 @@ export function setupSocketHandlers(
 
     // Clean up pending invites
     pendingInvites.delete(socket.id);
+
+    // Clean up room/map membership
+    const roomId = playerRooms.get(socket.id);
+    if (roomId) {
+      socket.to(`map:${roomId}`).emit('player:left', socket.id);
+      playerRooms.delete(socket.id);
+    }
+
+    // Clean up skill cooldowns
+    playerSkillCooldowns.delete(socket.id);
 
     // Remove player from game state
     if (player) {

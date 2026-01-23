@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import itemsData from '../data/items.json';
 import { usePlayerStore } from './playerStore';
 import { useInventoryStore } from './inventoryStore';
+import { equipmentApi } from '../services/supabase';
 
 export type EquipmentSlot = 'weapon' | 'head' | 'body' | 'accessory';
 
@@ -141,6 +142,9 @@ interface EquipmentState {
   // Active buffs from scrolls
   activeBuffs: ActiveBuff[];
 
+  // DB sync
+  _characterId: string | null;
+
   // Actions
   equipItem: (itemId: string) => { success: boolean; error?: string };
   unequipItem: (slot: EquipmentSlot) => boolean;
@@ -158,6 +162,10 @@ interface EquipmentState {
   addBuff: (buff: ActiveBuff) => void;
   updateBuffs: () => void;
   getBuffBonuses: () => { attackBonus: number; defenseBonus: number };
+
+  // DB sync actions
+  loadFromDb: (characterId: string) => Promise<void>;
+  saveToDb: () => Promise<void>;
 }
 
 export const useEquipmentStore = create<EquipmentState>((set, get) => ({
@@ -177,6 +185,7 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   enhanceResult: 'none',
   lastEnhancedItem: null,
   activeBuffs: [],
+  _characterId: null,
 
   equipItem: (itemId: string) => {
     const { allItems, equipped } = get();
@@ -227,6 +236,9 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
       }
     });
 
+    // Save to DB
+    get().saveToDb();
+
     return { success: true };
   },
 
@@ -251,6 +263,9 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
         [slot]: null
       }
     });
+
+    // Save to DB
+    get().saveToDb();
 
     return true;
   },
@@ -516,6 +531,63 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
     });
 
     return { attackBonus, defenseBonus };
+  },
+
+  // DB sync functions
+  loadFromDb: async (characterId: string) => {
+    const { allItems } = get();
+    try {
+      const dbEquipment = await equipmentApi.getEquipment(characterId);
+      const equipped: {
+        weapon: EquipmentItem | null;
+        head: EquipmentItem | null;
+        body: EquipmentItem | null;
+        accessory: EquipmentItem | null;
+      } = {
+        weapon: null,
+        head: null,
+        body: null,
+        accessory: null,
+      };
+
+      for (const eq of dbEquipment) {
+        const slot = eq.slot as EquipmentSlot;
+        const itemId = eq.item_id;
+
+        // Find item in allItems
+        const item = allItems.weapons[itemId] || allItems.armor[itemId];
+        if (item) {
+          equipped[slot] = item;
+        }
+      }
+
+      set({ equipped, _characterId: characterId });
+      console.log('Equipment loaded from DB');
+    } catch (error) {
+      console.error('Failed to load equipment from DB:', error);
+    }
+  },
+
+  saveToDb: async () => {
+    const { equipped, _characterId } = get();
+    if (!_characterId) return;
+
+    try {
+      const slots: EquipmentSlot[] = ['weapon', 'head', 'body', 'accessory'];
+
+      for (const slot of slots) {
+        const item = equipped[slot];
+        if (item) {
+          await equipmentApi.equipItem(_characterId, slot, item.id);
+        } else {
+          await equipmentApi.unequipItem(_characterId, slot);
+        }
+      }
+
+      console.log('Equipment saved to DB');
+    } catch (error) {
+      console.error('Failed to save equipment to DB:', error);
+    }
   },
 }));
 

@@ -9,9 +9,12 @@ interface TradeState {
   pendingRequests: TradeRequest[];
   // Is trade window open
   isTradeOpen: boolean;
+  // Listener initialization flag
+  _listenersInitialized: boolean;
 
   // Actions
   initializeListeners: () => void;
+  cleanupListeners: () => void;
   requestTrade: (targetId: string) => void;
   acceptRequest: (fromId: string) => void;
   declineRequest: (fromId: string) => void;
@@ -26,10 +29,15 @@ export const useTradeStore = create<TradeState>((set, get) => ({
   currentTrade: null,
   pendingRequests: [],
   isTradeOpen: false,
+  _listenersInitialized: false,
 
   initializeListeners: () => {
     const socket = socketService.getSocket();
     if (!socket) return;
+
+    // Prevent duplicate listener registration
+    if (get()._listenersInitialized) return;
+    set({ _listenersInitialized: true });
 
     // Received trade request from another player
     socket.on('trade:request_received', (request: TradeRequest) => {
@@ -74,6 +82,19 @@ export const useTradeStore = create<TradeState>((set, get) => ({
         console.log('Trade cancelled:', reason);
       }
     });
+  },
+
+  cleanupListeners: () => {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+
+    socket.off('trade:request_received');
+    socket.off('trade:started');
+    socket.off('trade:updated');
+    socket.off('trade:completed');
+    socket.off('trade:cancelled');
+
+    set({ _listenersInitialized: false });
   },
 
   requestTrade: (targetId: string) => {

@@ -43,6 +43,7 @@ interface MultiplayerState {
   // Connection state
   isConnected: boolean;
   roomId: string | null;
+  _listenersInitialized: boolean;
 
   // Other players
   otherPlayers: Map<string, OtherPlayer>;
@@ -58,6 +59,7 @@ interface MultiplayerState {
   // Actions
   connect: (characterId: string, characterName: string) => void;
   disconnect: () => void;
+  cleanupListeners: () => void;
   joinRoom: (roomId: string) => void;
   leaveRoom: () => void;
 
@@ -65,6 +67,12 @@ interface MultiplayerState {
   updatePosition: (x: number, y: number, direction: Direction, isMoving: boolean) => void;
   updateCombatState: (isAttacking: boolean, attackType?: string, targetX?: number, targetY?: number) => void;
   sendSkillUse: (skillId: string, x: number, y: number, targetX: number, targetY: number, direction: Direction) => void;
+
+  // Monster sync
+  sendMonsterDamage: (monsterId: number, damage: number, newHp: number, killed: boolean, exp?: number) => void;
+  onMonsterDamaged: ((monsterId: number, newHp: number, damage: number) => void) | null;
+  onMonsterKilled: ((monsterId: number) => void) | null;
+  setMonsterCallbacks: (onDamaged: (monsterId: number, newHp: number, damage: number) => void, onKilled: (monsterId: number) => void) => void;
 
   // Other players
   addPlayer: (player: OtherPlayer) => void;
@@ -83,14 +91,37 @@ const POSITION_UPDATE_INTERVAL = 50;
 export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   isConnected: false,
   roomId: null,
+  _listenersInitialized: false,
   otherPlayers: new Map(),
   messages: [],
   maxMessages: 100,
   _lastPositionUpdate: 0,
   _pendingPosition: null,
+  onMonsterDamaged: null,
+  onMonsterKilled: null,
 
   connect: (characterId: string, characterName: string) => {
     const socket = socketService.connect();
+
+    // Prevent duplicate listener registration
+    if (get()._listenersInitialized) {
+      // Just emit join event if already connected
+      const playerStore = usePlayerStore.getState();
+      socket.emit('player:join', {
+        id: characterId,
+        name: characterName,
+        job: playerStore.job,
+        x: playerStore.x,
+        y: playerStore.y,
+        level: playerStore.level,
+        hp: playerStore.hp,
+        maxHp: playerStore.maxHp,
+        weapon: playerStore.weapon,
+      });
+      return;
+    }
+
+    set({ _listenersInitialized: true });
 
     socket.on('connect', () => {
       set({ isConnected: true });
@@ -208,6 +239,21 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
       });
     });
 
+    // Monster sync events from other players
+    socket.on('monster:damaged', (data) => {
+      const callback = get().onMonsterDamaged;
+      if (callback) {
+        callback(data.monsterId, data.hp, data.damage);
+      }
+    });
+
+    socket.on('monster:killed', (data) => {
+      const callback = get().onMonsterKilled;
+      if (callback) {
+        callback(data.monsterId);
+      }
+    });
+
     socket.on('chat:message', (data) => {
       get().addMessage({
         id: data.id || `${Date.now()}-${data.senderId}`,
@@ -243,13 +289,36 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   },
 
   disconnect: () => {
+    get().cleanupListeners();
     socketService.disconnect();
     set({
       isConnected: false,
       roomId: null,
       otherPlayers: new Map(),
-      messages: []
+      messages: [],
+      _listenersInitialized: false,
     });
+  },
+
+  cleanupListeners: () => {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+
+    // Remove all multiplayer-related listeners
+    socket.off('connect');
+    socket.off('disconnect');
+    socket.off('player:joined');
+    socket.off('player:left');
+    socket.off('player:moved');
+    socket.off('player:attacked');
+    socket.off('player:skill');
+    socket.off('player:damaged');
+    socket.off('monster:damaged');
+    socket.off('monster:killed');
+    socket.off('chat:message');
+    socket.off('room:players');
+
+    set({ _listenersInitialized: false });
   },
 
   joinRoom: (roomId: string) => {
@@ -322,6 +391,26 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
         direction,
       });
     }
+  },
+
+  sendMonsterDamage: (monsterId: number, damage: number, newHp: number, killed: boolean, exp?: number) => {
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('monster:damage', {
+        monsterId,
+        damage,
+        newHp,
+        killed,
+        exp,
+      });
+    }
+  },
+
+  setMonsterCallbacks: (onDamaged, onKilled) => {
+    set({
+      onMonsterDamaged: onDamaged,
+      onMonsterKilled: onKilled,
+    });
   },
 
   addPlayer: (player: OtherPlayer) => {

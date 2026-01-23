@@ -3,6 +3,7 @@ import { usePlayerStore } from '../stores/playerStore';
 import { useInventoryStore, RESOURCES } from '../stores/inventoryStore';
 import { useMapStore, MAP_TRANSITION_DURATION } from '../stores/mapStore';
 import { useQuestStore } from '../stores/questStore';
+import { useDroppedItemStore } from '../stores/droppedItemStore';
 import { useLifeSkillStore, TOOL_TO_SKILL, getResourceExp, resourceMatchesSkill } from '../stores/lifeSkillStore';
 import { useAuthStore } from '../stores/authStore';
 import { CONFIG, type Direction, type ToolType } from '@shared/types';
@@ -200,6 +201,23 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
       const npcSpawns = mapRef.current.getNpcSpawns();
       npcManagerRef.current.loadMapNPCs(npcSpawns);
     }
+
+    // Set up monster sync callbacks for multiplayer
+    const multiplayerStore = useMultiplayerStore.getState();
+    multiplayerStore.setMonsterCallbacks(
+      // onMonsterDamaged - when other player damages a monster
+      (monsterId: number, newHp: number, damage: number) => {
+        if (monsterManagerRef.current) {
+          monsterManagerRef.current.syncMonsterDamage(monsterId, newHp);
+        }
+      },
+      // onMonsterKilled - when other player kills a monster
+      (monsterId: number) => {
+        if (monsterManagerRef.current) {
+          monsterManagerRef.current.syncMonsterKilled(monsterId);
+        }
+      }
+    );
   }, []);
 
   // Handle job changes - update player sprite and weapon
@@ -408,6 +426,16 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
     monstersInRange.forEach((monster) => {
       const result = monsterManagerRef.current!.damageMonster(monster.id, attackPower);
 
+      // Get updated monster HP after damage
+      const updatedMonster = monsterManagerRef.current!.getMonsterById(monster.id);
+      const newHp = updatedMonster ? updatedMonster.hp : 0;
+
+      // Send damage to server for other players to sync
+      const mpStore = useMultiplayerStore.getState();
+      if (mpStore.isConnected) {
+        mpStore.sendMonsterDamage(monster.id, attackPower, newHp, result.killed, result.exp);
+      }
+
       damageNumbersRef.current.push({
         x: monster.x,
         y: monster.y - 30,
@@ -435,6 +463,34 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
       if (result.killed) {
         gainExp(result.exp);
         useQuestStore.getState().updateQuestProgress('kill', monster.type, 1);
+
+        // Drop item with 30% chance
+        if (Math.random() < 0.3) {
+          const dropStore = useDroppedItemStore.getState();
+          const socketId = useMultiplayerStore.getState().isConnected
+            ? require('../services/socket').socketService.getSocket()?.id
+            : undefined;
+
+          // Determine item rarity based on monster type
+          const rarityRoll = Math.random();
+          let rarity: 'common' | 'uncommon' | 'rare' = 'common';
+          if (monster.isBoss) {
+            rarity = rarityRoll < 0.5 ? 'rare' : rarityRoll < 0.8 ? 'uncommon' : 'common';
+          } else {
+            rarity = rarityRoll < 0.1 ? 'rare' : rarityRoll < 0.3 ? 'uncommon' : 'common';
+          }
+
+          dropStore.dropItem({
+            itemId: `monster_drop_${monster.type}`,
+            itemName: `${monster.type} 드롭 아이템`,
+            itemType: 'resource',
+            quantity: 1,
+            rarity,
+            x: monster.x + (Math.random() - 0.5) * 30,
+            y: monster.y + (Math.random() - 0.5) * 30,
+            ownerId: socketId,
+          });
+        }
       }
     });
   }, [isDead, startAttack, isRangedJob, setFacingRight, getAttackPower, gainExp]);
@@ -811,6 +867,16 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
                         const finalDamage = Math.floor(skillDamage * critMultiplier);
 
                         const dmgResult = monsterManagerRef.current!.damageMonster(monster.id, finalDamage);
+
+                        // Get updated monster HP after damage
+                        const updatedMonster = monsterManagerRef.current!.getMonsterById(monster.id);
+                        const newHp = updatedMonster ? updatedMonster.hp : 0;
+
+                        // Send damage to server for other players to sync
+                        const mpStoreSkill = useMultiplayerStore.getState();
+                        if (mpStoreSkill.isConnected) {
+                          mpStoreSkill.sendMonsterDamage(monster.id, finalDamage, newHp, dmgResult.killed, dmgResult.exp);
+                        }
 
                         // Damage number (slightly offset for multiple hits)
                         damageNumbersRef.current.push({

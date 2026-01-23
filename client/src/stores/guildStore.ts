@@ -9,6 +9,7 @@ interface GuildState {
   pendingInvites: GuildInvite[];
   isLoading: boolean;
   error: string | null;
+  _listenersInitialized: boolean;
 
   // Computed
   isLeader: boolean;
@@ -17,6 +18,7 @@ interface GuildState {
 
   // Actions
   initializeGuildListeners: () => void;
+  cleanupGuildListeners: () => void;
   loadGuildData: (characterId: string) => Promise<void>;
   createGuild: (characterId: string, name: string, description?: string) => Promise<void>;
   invitePlayer: (targetCharacterId: string) => void;
@@ -43,6 +45,7 @@ export const useGuildStore = create<GuildState>((set, get) => ({
   pendingInvites: [],
   isLoading: false,
   error: null,
+  _listenersInitialized: false,
   isLeader: false,
   isOfficer: false,
   myRank: null,
@@ -50,6 +53,10 @@ export const useGuildStore = create<GuildState>((set, get) => ({
   initializeGuildListeners: () => {
     const socket = socketService.getSocket();
     if (!socket) return;
+
+    // Prevent duplicate listener registration
+    if (get()._listenersInitialized) return;
+    set({ _listenersInitialized: true });
 
     // Guild data received
     socket.on('guild:data', (guild) => {
@@ -120,6 +127,22 @@ export const useGuildStore = create<GuildState>((set, get) => ({
         myRank: null,
       });
     });
+  },
+
+  cleanupGuildListeners: () => {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+
+    socket.off('guild:data');
+    socket.off('guild:invite_received');
+    socket.off('guild:member_joined');
+    socket.off('guild:member_left');
+    socket.off('guild:member_online');
+    socket.off('guild:member_offline');
+    socket.off('guild:rank_changed');
+    socket.off('guild:disbanded');
+
+    set({ _listenersInitialized: false });
   },
 
   loadGuildData: async (characterId: string) => {

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ResourceTier, ToolType } from '@shared/types';
+import { inventoryApi } from '../services/supabase';
 
 export interface ResourceData {
   id: string;
@@ -40,6 +41,8 @@ interface InventoryState {
   items: InventoryItem[];
   maxSlots: number;
   gold: number;
+  _characterId: string | null;
+  _saveTimeout: ReturnType<typeof setTimeout> | null;
 
   // Actions
   addItem: (item: InventoryItem | string, quantity?: number) => boolean;
@@ -51,12 +54,19 @@ interface InventoryState {
   clearInventory: () => void;
   addGold: (amount: number) => void;
   removeGold: (amount: number) => boolean;
+
+  // DB sync
+  loadFromDb: (characterId: string) => Promise<void>;
+  saveToDb: () => Promise<void>;
+  _scheduleSave: () => void;
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
   items: [],
   maxSlots: 30,
   gold: 100,
+  _characterId: null,
+  _saveTimeout: null,
 
   addItem: (itemOrId, quantity = 1) => {
     const state = get();
@@ -92,6 +102,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
             : i
         ),
       });
+      get()._scheduleSave();
       return true;
     }
 
@@ -107,6 +118,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         quantity: itemQuantity
       }],
     });
+    get()._scheduleSave();
     return true;
   },
 
@@ -132,6 +144,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       });
     }
 
+    get()._scheduleSave();
     return true;
   },
 
@@ -186,6 +199,75 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     }
     set({ gold: state.gold - amount });
     return true;
+  },
+
+  // DB sync functions
+  loadFromDb: async (characterId: string) => {
+    try {
+      const dbItems = await inventoryApi.getInventory(characterId);
+      const items: InventoryItem[] = dbItems.map((item: any) => ({
+        id: item.item_id,
+        name: item.item_id, // Name will be resolved by RESOURCES or item data
+        type: item.item_type as ItemType,
+        quantity: item.quantity,
+      }));
+      set({ items, _characterId: characterId });
+      console.log('Inventory loaded from DB:', items.length, 'items');
+    } catch (error) {
+      console.error('Failed to load inventory from DB:', error);
+    }
+  },
+
+  saveToDb: async () => {
+    const { items, _characterId } = get();
+    if (!_characterId) return;
+
+    try {
+      // Get current DB inventory
+      const dbItems = await inventoryApi.getInventory(_characterId);
+      const dbItemMap = new Map(dbItems.map((i: any) => [i.item_id, i]));
+
+      // Sync each local item
+      for (const item of items) {
+        const dbItem = dbItemMap.get(item.id);
+        if (dbItem) {
+          // Update quantity if changed
+          if (dbItem.quantity !== item.quantity) {
+            await inventoryApi.updateItem(dbItem.id, { quantity: item.quantity });
+          }
+          dbItemMap.delete(item.id);
+        } else {
+          // Add new item
+          await inventoryApi.addItem({
+            character_id: _characterId,
+            item_id: item.id,
+            item_type: item.type,
+            quantity: item.quantity,
+          });
+        }
+      }
+
+      // Remove items that no longer exist locally
+      for (const [, dbItem] of dbItemMap) {
+        await inventoryApi.removeItem(dbItem.id);
+      }
+
+      console.log('Inventory saved to DB');
+    } catch (error) {
+      console.error('Failed to save inventory to DB:', error);
+    }
+  },
+
+  _scheduleSave: () => {
+    const { _saveTimeout } = get();
+    if (_saveTimeout) {
+      clearTimeout(_saveTimeout);
+    }
+    // Debounce save by 2 seconds
+    const timeout = setTimeout(() => {
+      get().saveToDb();
+    }, 2000);
+    set({ _saveTimeout: timeout });
   },
 }));
 

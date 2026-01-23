@@ -7,9 +7,11 @@ interface PartyState {
   currentParty: Party | null;
   pendingInvites: PartyInvite[];
   isLeader: boolean;
+  _listenersInitialized: boolean;
 
   // Actions
   initializePartyListeners: () => void;
+  cleanupPartyListeners: () => void;
   createParty: () => void;
   invitePlayer: (targetId: string) => void;
   acceptInvite: (partyId: string) => void;
@@ -32,10 +34,15 @@ export const usePartyStore = create<PartyState>((set, get) => ({
   currentParty: null,
   pendingInvites: [],
   isLeader: false,
+  _listenersInitialized: false,
 
   initializePartyListeners: () => {
     const socket = socketService.getSocket();
     if (!socket) return;
+
+    // Prevent duplicate listener registration
+    if (get()._listenersInitialized) return;
+    set({ _listenersInitialized: true });
 
     // Party created/joined
     socket.on('party:created', (party) => {
@@ -116,6 +123,21 @@ export const usePartyStore = create<PartyState>((set, get) => ({
         };
       });
     });
+  },
+
+  cleanupPartyListeners: () => {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+
+    socket.off('party:created');
+    socket.off('party:disbanded');
+    socket.off('party:invite_received');
+    socket.off('party:member_joined');
+    socket.off('party:member_left');
+    socket.off('party:member_updated');
+    socket.off('party:leader_changed');
+
+    set({ _listenersInitialized: false });
   },
 
   createParty: () => {

@@ -349,6 +349,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       get().die();
     } else {
       set({ hp: newHp });
+
+      // Sync HP to party members via server
+      import('../services/socket').then(({ socketService }) => {
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.emit('player:damaged_self', { hp: newHp, maxHp: s.maxHp, damage: actualDamage });
+        }
+      });
     }
   },
 

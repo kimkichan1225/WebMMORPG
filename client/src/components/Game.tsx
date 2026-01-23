@@ -10,6 +10,7 @@ import { useAuthStore } from '../stores/authStore';
 import { usePartyStore } from '../stores/partyStore';
 import { useGuildStore } from '../stores/guildStore';
 import { useTradeStore } from '../stores/tradeStore';
+import { useDroppedItemStore } from '../stores/droppedItemStore';
 import { useGameTimeStore } from '../stores/gameTimeStore';
 import { ToolSelect } from './ToolSelect';
 import { HUD } from './HUD';
@@ -553,6 +554,7 @@ export function Game() {
         useGuildStore.getState().initializeGuildListeners();
         useGuildStore.getState().loadGuildData(selectedCharacter.id);
         useTradeStore.getState().initializeListeners();
+        useDroppedItemStore.getState().initializeListeners();
       }, 500);
 
       return () => {

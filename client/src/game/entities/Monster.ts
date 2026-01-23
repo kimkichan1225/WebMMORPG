@@ -504,6 +504,34 @@ export class MonsterManager {
     return this.monsters;
   }
 
+  // Update monster HP from server sync (other player's attack)
+  syncMonsterDamage(monsterId: number, newHp: number): void {
+    const monster = this.monsters.find((m) => m.id === monsterId);
+    if (!monster) return;
+
+    monster.hp = Math.max(0, newHp);
+
+    // Aggro on damage
+    if (monster.isAlive && (monster.state === 'idle' || monster.state === 'return')) {
+      monster.state = 'chase';
+    }
+  }
+
+  // Kill monster from server sync (other player killed it)
+  syncMonsterKilled(monsterId: number): void {
+    const monster = this.monsters.find((m) => m.id === monsterId);
+    if (!monster || !monster.isAlive) return;
+
+    monster.hp = 0;
+    monster.isAlive = false;
+    monster.respawnTimer = monster.respawnTime;
+  }
+
+  // Get monster by ID
+  getMonsterById(monsterId: number): Monster | undefined {
+    return this.monsters.find((m) => m.id === monsterId);
+  }
+
   render(ctx: CanvasRenderingContext2D, cameraX: number, cameraY: number): void {
     this.monsters.forEach((monster) => {
       if (!monster.isAlive) return;

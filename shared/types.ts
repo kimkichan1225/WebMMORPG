@@ -244,7 +244,8 @@ export interface ClientToServerEvents {
   'player:move': (data: { x: number; y: number; direction: Direction; isMoving: boolean }) => void;
   'player:attack': (data: { direction: Direction; targetMonsterIds: number[]; x?: number; y?: number; targetX?: number; targetY?: number; attackType?: string }) => void;
   'player:skill': (data: { skillId: string; x: number; y: number; targetX: number; targetY: number; direction: Direction }) => void;
-  'monster:damage': (data: { monsterId: number; damage: number }) => void;
+  'player:damaged_self': (data: { hp: number; maxHp: number; damage: number }) => void;
+  'monster:damage': (data: { monsterId: number; damage: number; newHp: number; killed: boolean; exp?: number }) => void;
   'chat:send': (data: { message: string; channel?: 'global' | 'party' | 'whisper' | 'guild'; targetId?: string }) => void;
   // Room events
   'room:join': (data: { roomId: string }) => void;
@@ -284,6 +285,7 @@ export interface ClientToServerEvents {
   'trade:cancel': () => void;
   // Dropped items events
   'item:pickup': (data: { itemId: string }) => void;
+  'item:dropped': (item: DroppedItem) => void;
 }
 
 // Database types (Supabase)

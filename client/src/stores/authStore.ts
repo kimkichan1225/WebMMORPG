@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { supabase, authApi, characterApi } from '../services/supabase';
 import { User, Session } from '@supabase/supabase-js';
+import { useInventoryStore } from './inventoryStore';
+import { useEquipmentStore } from './equipmentStore';
+import { useQuestStore } from './questStore';
 
 export interface CharacterData {
   id: string;
@@ -265,6 +268,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!character) return false;
 
     set({ selectedCharacter: character });
+
+    // Load inventory, equipment, and quests from DB
+    try {
+      await Promise.all([
+        useInventoryStore.getState().loadFromDb(characterId),
+        useEquipmentStore.getState().loadFromDb(characterId),
+        useQuestStore.getState().loadFromDb(characterId),
+      ]);
+      console.log('Character data loaded from DB');
+    } catch (error) {
+      console.error('Failed to load character data from DB:', error);
+    }
+
     return true;
   },
 

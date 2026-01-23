@@ -77,8 +77,8 @@ class SocketService {
     this.socket?.emit('player:attack', { direction, targetMonsterIds });
   }
 
-  sendMonsterDamage(monsterId: number, damage: number): void {
-    this.socket?.emit('monster:damage', { monsterId, damage });
+  sendMonsterDamage(monsterId: number, damage: number, newHp: number, killed: boolean, exp?: number): void {
+    this.socket?.emit('monster:damage', { monsterId, damage, newHp, killed, exp });
   }
 
   sendChatMessage(message: string, channel: 'global' | 'party' | 'whisper', targetId?: string): void {
