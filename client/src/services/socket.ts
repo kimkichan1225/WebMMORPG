@@ -11,9 +11,16 @@ import type {
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+type ErrorCallback = (error: Error) => void;
+type ConnectionCallback = (connected: boolean) => void;
+
 class SocketService {
   private socket: TypedSocket | null = null;
   private serverUrl: string;
+  private errorCallback: ErrorCallback | null = null;
+  private connectionCallback: ConnectionCallback | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
 
   constructor() {
     // In production, connect to same origin (server serves both API and client)
@@ -22,28 +29,67 @@ class SocketService {
       (import.meta.env.PROD ? '' : 'http://localhost:4000');
   }
 
+  setErrorCallback(callback: ErrorCallback): void {
+    this.errorCallback = callback;
+  }
+
+  setConnectionCallback(callback: ConnectionCallback): void {
+    this.connectionCallback = callback;
+  }
+
   connect(): TypedSocket {
     if (this.socket?.connected) {
       return this.socket;
     }
 
+    // 기존 소켓이 있으면 정리
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+    }
+
     this.socket = io(this.serverUrl, {
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      transports: ['websocket', 'polling'],
     });
 
     this.socket.on('connect', () => {
       console.log('Connected to server:', this.socket?.id);
+      this.reconnectAttempts = 0;
+      this.connectionCallback?.(true);
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('Disconnected from server:', reason);
+      this.connectionCallback?.(false);
+
+      // io server disconnect 또는 io client disconnect는 의도적 종료
+      if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+        return;
+      }
+
+      // 비정상 종료 - 에러 콜백 호출
+      this.errorCallback?.(new Error(`연결 끊김: ${reason}`));
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
+      console.error('Connection error:', error.message);
+      this.reconnectAttempts++;
+      this.errorCallback?.(new Error(`연결 오류: ${error.message}`));
+    });
+
+    this.socket.io.on('reconnect', (attempt) => {
+      console.log(`Reconnected after ${attempt} attempts`);
+      this.reconnectAttempts = 0;
+    });
+
+    this.socket.io.on('reconnect_failed', () => {
+      console.error('Failed to reconnect after max attempts');
+      this.errorCallback?.(new Error('서버 연결 실패. 페이지를 새로고침 해주세요.'));
     });
 
     return this.socket;
@@ -51,6 +97,7 @@ class SocketService {
 
   disconnect(): void {
     if (this.socket) {
+      this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
     }
@@ -62,6 +109,10 @@ class SocketService {
 
   isConnected(): boolean {
     return this.socket?.connected ?? false;
+  }
+
+  getSocketId(): string | undefined {
+    return this.socket?.id;
   }
 
   // Player actions

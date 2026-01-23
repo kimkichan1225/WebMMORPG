@@ -33,6 +33,7 @@ import { PlayerContextMenu } from './PlayerContextMenu';
 import { NPC } from '../game/entities/NPC';
 import { useSkillStore } from '../stores/skillStore';
 import { useMultiplayerStore } from '../stores/multiplayerStore';
+import { socketService } from '../services/socket';
 import { FishingGameOverlay } from './windows/FishingUI';
 import { CONFIG, TileType, type WeaponType } from '@shared/types';
 import { JOB_WEAPONS } from '../game/weapons';
@@ -548,17 +549,28 @@ export function Game() {
       // Connect first
       useMultiplayerStore.getState().connect(selectedCharacter.id, selectedCharacter.name);
 
-      // Wait for socket to connect, then initialize listeners
-      const initTimer = setTimeout(() => {
+      // Initialize listeners function
+      const initializeAllListeners = () => {
         usePartyStore.getState().initializePartyListeners();
         useGuildStore.getState().initializeGuildListeners();
         useGuildStore.getState().loadGuildData(selectedCharacter.id);
         useTradeStore.getState().initializeListeners();
         useDroppedItemStore.getState().initializeListeners();
-      }, 500);
+      };
+
+      // Check if socket is already connected or wait for connection
+      const socket = socketService.getSocket();
+      if (socket?.connected) {
+        initializeAllListeners();
+      } else if (socket) {
+        socket.once('connect', initializeAllListeners);
+      }
 
       return () => {
-        clearTimeout(initTimer);
+        const socket = socketService.getSocket();
+        if (socket) {
+          socket.off('connect', initializeAllListeners);
+        }
         useMultiplayerStore.getState().disconnect();
       };
     }

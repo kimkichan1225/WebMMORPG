@@ -25,8 +25,13 @@ const __dirname = path.dirname(__filename);
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Get allowed origins for CORS
-function getAllowedOrigins(): string[] {
-  const origins: string[] = ['http://localhost:3000'];
+function getAllowedOrigins(): (string | RegExp)[] {
+  const origins: (string | RegExp)[] = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    /^http:\/\/localhost:\d+$/,  // 모든 localhost 포트 허용
+  ];
 
   if (process.env.CLIENT_URL) {
     // Support comma-separated multiple URLs
@@ -85,15 +90,41 @@ const allowedOrigins = getAllowedOrigins();
 // Socket.io with typed events
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST'],
+    origin: (origin, callback) => {
+      // 개발 환경: origin이 없거나 localhost면 허용
+      if (!origin || origin.startsWith('http://localhost')) {
+        callback(null, true);
+        return;
+      }
+      // 프로덕션: 허용 목록 확인
+      const isAllowed = allowedOrigins.some(allowed => {
+        if (typeof allowed === 'string') return allowed === origin;
+        if (allowed instanceof RegExp) return allowed.test(origin);
+        return false;
+      });
+      callback(null, isAllowed);
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
   },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
 });
 
 // Middleware
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    if (!origin || origin.startsWith('http://localhost')) {
+      callback(null, true);
+      return;
+    }
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') return allowed === origin;
+      if (allowed instanceof RegExp) return allowed.test(origin);
+      return false;
+    });
+    callback(null, isAllowed);
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -133,15 +164,12 @@ io.on('connection', (socket) => {
   // Send current game time to newly connected player
   socket.emit('time:update', { ...gameTime });
 
+  // Setup handlers - disconnect is handled inside setupSocketHandlers
   setupSocketHandlers(io, socket, gameState);
   setupGuildHandlers(io, socket, gameState);
   setupTradeHandlers(io, socket, gameState);
 
-  socket.on('disconnect', () => {
-    console.log(`Player disconnected: ${socket.id}`);
-    gameState.players.delete(socket.id);
-    io.emit('player:left', socket.id);
-  });
+  // Note: disconnect handler is in setupSocketHandlers to consolidate cleanup
 });
 
 // Start server

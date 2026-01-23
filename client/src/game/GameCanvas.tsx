@@ -125,6 +125,9 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
   const [transitionOpacity, setTransitionOpacity] = useState(0);
   const portalCooldownRef = useRef<number>(0);
 
+  // Respawn listener tracking to prevent memory leak
+  const respawnListenerRef = useRef<((e: KeyboardEvent) => void) | null>(null);
+
   const {
     x: playerX,
     y: playerY,
@@ -1083,19 +1086,26 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
           CONFIG.CANVAS_HEIGHT / 2 + 30
         );
 
-        // Handle respawn key
-        const handleRespawn = (e: KeyboardEvent) => {
-          if (e.key.toLowerCase() === 'r') {
-            respawn();
-            // Move to starting village
-            const mapStore = useMapStore.getState();
-            if (mapStore.currentMapId !== 'town') {
-              mapStore.setCurrentMap('town', 640, 640);
+        // Handle respawn key - only add listener once
+        if (!respawnListenerRef.current) {
+          const handleRespawn = (e: KeyboardEvent) => {
+            if (e.key.toLowerCase() === 'r') {
+              respawn();
+              // Move to starting village
+              const mapStore = useMapStore.getState();
+              if (mapStore.currentMapId !== 'town') {
+                mapStore.setCurrentMap('town', 640, 640);
+              }
+              // Clean up listener
+              if (respawnListenerRef.current) {
+                window.removeEventListener('keydown', respawnListenerRef.current);
+                respawnListenerRef.current = null;
+              }
             }
-            window.removeEventListener('keydown', handleRespawn);
-          }
-        };
-        window.addEventListener('keydown', handleRespawn);
+          };
+          respawnListenerRef.current = handleRespawn;
+          window.addEventListener('keydown', handleRespawn);
+        }
 
         animationId = requestAnimationFrame(gameLoop);
         return;
@@ -1715,6 +1725,11 @@ export function GameCanvas({ onToggleStatWindow, onToggleInventory, onToggleJobC
 
     return () => {
       cancelAnimationFrame(animationId);
+      // Clean up respawn listener if still active
+      if (respawnListenerRef.current) {
+        window.removeEventListener('keydown', respawnListenerRef.current);
+        respawnListenerRef.current = null;
+      }
     };
   }, [
     toolSelected,

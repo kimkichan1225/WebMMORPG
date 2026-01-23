@@ -103,30 +103,13 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
   connect: (characterId: string, characterName: string) => {
     const socket = socketService.connect();
 
-    // Prevent duplicate listener registration
-    if (get()._listenersInitialized) {
-      // Just emit join event if already connected
-      const playerStore = usePlayerStore.getState();
-      socket.emit('player:join', {
-        id: characterId,
-        name: characterName,
-        job: playerStore.job,
-        x: playerStore.x,
-        y: playerStore.y,
-        level: playerStore.level,
-        hp: playerStore.hp,
-        maxHp: playerStore.maxHp,
-        weapon: playerStore.weapon,
-      });
-      return;
-    }
+    // Always cleanup old listeners first to prevent duplicates
+    get().cleanupListeners();
 
     set({ _listenersInitialized: true });
 
-    socket.on('connect', () => {
-      set({ isConnected: true });
-
-      // Join default room with full player data
+    // Helper to emit join event
+    const emitJoin = () => {
       const playerStore = usePlayerStore.getState();
       socket.emit('player:join', {
         id: characterId,
@@ -139,11 +122,22 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => ({
         maxHp: playerStore.maxHp,
         weapon: playerStore.weapon,
       });
+    };
+
+    socket.on('connect', () => {
+      set({ isConnected: true });
+      emitJoin();
     });
 
     socket.on('disconnect', () => {
       set({ isConnected: false, otherPlayers: new Map() });
     });
+
+    // If already connected, emit join immediately
+    if (socket.connected) {
+      set({ isConnected: true });
+      emitJoin();
+    }
 
     // Handle other players
     socket.on('player:joined', (data) => {

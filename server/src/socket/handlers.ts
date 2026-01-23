@@ -569,11 +569,12 @@ export function setupSocketHandlers(
     io.to(`party:${partyId}`).emit('party:leader_changed', data.targetId);
   });
 
-  // Handle disconnect - clean up party
+  // Handle disconnect - CENTRALIZED cleanup for all systems
   socket.on('disconnect', () => {
+    console.log(`Player disconnecting: ${socket.id}`);
     const player = gameState.players.get(socket.id);
 
-    // Clean up party membership
+    // 1. Clean up party membership
     const partyId = playerParties.get(socket.id);
     if (partyId) {
       const party = parties.get(partyId);
@@ -593,24 +594,48 @@ export function setupSocketHandlers(
         }
       }
     }
-
-    // Clean up pending invites
     pendingInvites.delete(socket.id);
 
-    // Clean up room/map membership
+    // 2. Clean up guild membership
+    const guildId = playerGuilds.get(socket.id);
+    if (guildId) {
+      socket.leave(`guild:${guildId}`);
+      io.to(`guild:${guildId}`).emit('guild:member_offline', socket.id);
+      playerGuilds.delete(socket.id);
+    }
+    pendingGuildInvites.delete(socket.id);
+
+    // 3. Clean up trades
+    const tradeSessionId = playerTrades.get(socket.id);
+    if (tradeSessionId) {
+      const session = tradeSessions.get(tradeSessionId);
+      if (session) {
+        const otherId = session.player1Id === socket.id ? session.player2Id : session.player1Id;
+        io.to(otherId).emit('trade:cancelled', {
+          sessionId: tradeSessionId,
+          reason: '상대방이 접속을 종료했습니다.',
+        });
+        tradeSessions.delete(tradeSessionId);
+        playerTrades.delete(otherId);
+      }
+      playerTrades.delete(socket.id);
+    }
+    pendingTradeRequests.delete(socket.id);
+
+    // 4. Clean up room/map membership
     const roomId = playerRooms.get(socket.id);
     if (roomId) {
-      socket.to(`map:${roomId}`).emit('player:left', socket.id);
+      socket.leave(`map:${roomId}`);
       playerRooms.delete(socket.id);
     }
 
-    // Clean up skill cooldowns
+    // 5. Clean up skill cooldowns
     playerSkillCooldowns.delete(socket.id);
 
-    // Remove player from game state
+    // 6. Remove player from game state and notify others
     if (player) {
       gameState.players.delete(socket.id);
-      socket.broadcast.emit('player:left', socket.id);
+      io.emit('player:left', socket.id);
     }
   });
 }
@@ -797,12 +822,7 @@ export function setupGuildHandlers(
     }
   });
 
-  // Handle disconnect for guild
-  socket.on('disconnect', () => {
-    // Clean up guild membership
-    leaveGuildRoom();
-    pendingGuildInvites.delete(socket.id);
-  });
+  // Note: disconnect handling is centralized in setupSocketHandlers
 
   // Expose joinGuildRoom for external use
   return { joinGuildRoom, leaveGuildRoom };
@@ -1016,25 +1036,5 @@ export function setupTradeHandlers(
     playerTrades.delete(session.player2Id);
   });
 
-  // Handle disconnect - clean up trades
-  socket.on('disconnect', () => {
-    // Clean up pending requests
-    pendingTradeRequests.delete(socket.id);
-
-    // Clean up active trade
-    const sessionId = playerTrades.get(socket.id);
-    if (sessionId) {
-      const session = tradeSessions.get(sessionId);
-      if (session) {
-        const otherId = session.player1Id === socket.id ? session.player2Id : session.player1Id;
-        io.to(otherId).emit('trade:cancelled', {
-          sessionId,
-          reason: '상대방이 접속을 종료했습니다.',
-        });
-        tradeSessions.delete(sessionId);
-        playerTrades.delete(otherId);
-      }
-      playerTrades.delete(socket.id);
-    }
-  });
+  // Note: disconnect handling is centralized in setupSocketHandlers
 }
